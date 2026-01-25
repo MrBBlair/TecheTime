@@ -1,0 +1,31 @@
+{
+  "name": "techetime-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "build": "npm run build --workspace=apps/web && npm run build --workspace=apps/api",
+    "emulators:start": "firebase emulators:start",
+    "seed": "npm run seed --workspace=apps/api",
+    "test": "npm run test --workspace=apps/web",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "deploy": "node deploy-vercel.js",
+    "deploy:bash": "./deploy-vercel.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@vercel/node": "^5.5.27",
+    "concurrently": "^8.2.2",
+    "firebase-tools": "^13.0.0",
+    "playwright": "^1.58.0",
+    "vercel": "^50.4.11"
+  }
+}

@@ -1,0 +1,717 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 .SFNS-Semibold;\f1\fnil\fcharset0 .SFNS-Regular;\f2\fnil\fcharset0 HelveticaNeue-Bold;
+\f3\fswiss\fcharset0 Helvetica;\f4\fnil\fcharset0 .AppleSystemUIFontMonospaced-Regular;\f5\froman\fcharset0 TimesNewRomanPSMT;
+}
+{\colortbl;\red255\green255\blue255;\red14\green14\blue14;}
+{\*\expandedcolortbl;;\cssrgb\c6700\c6700\c6700;}
+\margl1440\margr1440\vieww24960\viewh17860\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Cursor Prompt \'97 Tech eTime 
+\f1\b0\fs28 \
+\
+You are 
+\f2\b \cf2 Cursor
+\f1\b0 \cf2 , acting as a senior full-stack engineer and product designer. Build a 
+\f2\b \cf2 mobile-first
+\f1\b0 \cf2 , spacious, professional workforce 
+\f2\b \cf2 time clock + payroll reporting
+\f1\b0 \cf2  MVP branded as 
+\f2\b \cf2 Tech eTime
+\f1\b0 \cf2 , a featured application under the 
+\f2\b \cf2 Tech ePhi
+\f1\b0 \cf2  platform. Prioritize fast form completion, minimal typing, and interactive inputs (PIN pads, pickers, smart defaults, toggles, inline edits).\
+\
+You must 
+\f2\b \cf2 implement and run locally
+\f1\b0 \cf2  for development, while being deployable to 
+\f2\b \cf2 Vercel
+\f1\b0 \cf2  for hosting. Use 
+\f2\b \cf2 Firebase for database + authentication
+\f1\b0 \cf2 , 
+\f2\b \cf2 Postmark for email
+\f1\b0 \cf2 , and integrate 
+\f2\b \cf2 Google Gemini / Google AI
+\f1\b0 \cf2  for AI features.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 PRODUCT IDENTITY
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	App name: 
+\f2\b Tech eTime
+\f1\b0 \
+	\'95	Platform brand: 
+\f2\b Tech ePhi
+\f1\b0 \
+	\'95	Internal tagline direction: \'93Time, looped into payroll.\'94\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 GLOBAL DESIGN THEME
+\f1\b0\fs28 \cf2 \
+\
+Use an enterprise-grade, consistent theme (no loud gradients).\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Royal Purple (primary): 
+\f4 #4B2E83
+\f1 \
+	\'95	Old Gold (accent): 
+\f4 #C9A227
+\f1 \
+	\'95	Neutrals: charcoal, off-white, light gray\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li260\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 Usage:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Royal Purple: headers/nav/primary buttons\
+	\'95	Old Gold: highlights, CTAs, success states\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li260\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 Implement theme centrally (Tailwind config + CSS variables). Layout should feel 
+\f2\b spacious
+\f1\b0 , readable, and optimized for 
+\f2\b thumb use
+\f1\b0  on phones, while scaling cleanly to tablets/iPads.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 GOAL
+\f1\b0\fs28 \cf2 \
+\
+Create a web app where:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Business owners/managers authenticate and manage workforce data.\
+	\'95	Workers clock in/out using a secure 
+\f2\b PIN-based system
+\f1\b0 .\
+	\'95	Clocking works on 
+\f2\b ANY device
+\f1\b0  logged into the business (admin session or kiosk mode).\
+	\'95	Businesses can have multiple locations.\
+	\'95	The system generates payroll reports and exports CSV.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 TECH STACK (UPDATED TO MATCH REQUIREMENTS)
+\f1\b0\fs28 \cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Monorepo
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 /apps/web
+\f1  \uc0\u8594  React UI\
+	\'95	
+\f4 /apps/api
+\f1  \uc0\u8594  Node API (Express or Fastify) for server-side ops (Postmark, secure report export, admin operations, kiosk management)\
+	\'95	
+\f4 /packages/shared
+\f1  \uc0\u8594  shared types + zod schemas\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Frontend
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	React + TypeScript + Vite\
+	\'95	React Router\
+	\'95	TailwindCSS (preferred) for theme + responsive spacing\
+	\'95	Form UX: use controlled inputs, inline validation, and components like date range picker, searchable selects, stepper modals.\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Backend / Infra
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Node.js + TypeScript + Express (or Fastify)\
+	\'95	
+\f2\b Firebase Authentication
+\f1\b0  (admins via email/password; optionally support magic link later)\
+	\'95	
+\f2\b Firestore
+\f1\b0  for data storage (scoped by businessId)\
+	\'95	
+\f2\b Firebase Emulator Suite
+\f1\b0  required for local-first development\
+	\'95	
+\f2\b Postmark
+\f1\b0  for transactional email (business registration confirmation, invite manager, etc.)\
+	\'95	
+\f2\b Vercel
+\f1\b0  hosting:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Web app on Vercel\
+	\'95	API as Vercel serverless functions OR Node service (but must still run locally)\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 AI Integration
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Add 
+\f2\b Google Gemini / Google AI
+\f1\b0  integration.\
+	\'95	Must be safe-by-default and non-blocking: app works without AI keys.\
+	\'95	Use AI for:\
+\pard\tqr\tx660\tx820\li820\fi-820\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	\'93Explain this payroll report\'94 (natural language summary)\
+	2.	\'93Flag anomalies\'94 (missing clock-outs, unusually long shifts, duplicate punches)\
+	3.	Optional: \'93Smart notes\'94 suggestions for admins\
+\
+Use environment variables and clear feature toggles.\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Validation
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	zod everywhere (shared schemas in 
+\f4 /packages/shared
+\f1 )\
+	\'95	Strict input validation at API boundary\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 DATA MODEL (FIRESTORE)
+\f1\b0\fs28 \cf2 \
+\
+All entities strictly scoped by 
+\f4 \cf2 businessId
+\f1 \cf2 .\
+\
+Use Firestore collections like:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 businesses/\{businessId\}
+\f1 \
+	\'95	
+\f4 businesses/\{businessId\}/users/\{userId\}
+\f1 \
+	\'95	
+\f4 businesses/\{businessId\}/locations/\{locationId\}
+\f1 \
+	\'95	
+\f4 businesses/\{businessId\}/deviceSessions/\{deviceSessionId\}
+\f1 \
+	\'95	
+\f4 businesses/\{businessId\}/timeEntries/\{timeEntryId\}
+\f1 \
+	\'95	
+\f4 businesses/\{businessId\}/payRates/\{payRateId\}
+\f1 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Entities
+\f1\b0\fs28 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b \cf2 Business
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	id, name, createdAt\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b \cf2 User
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	id, businessId\
+	\'95	email (nullable for workers if you want; but simplest: store for admins only)\
+	\'95	role: 
+\f4 OWNER | MANAGER | WORKER
+\f1 \
+	\'95	firstName, lastName\
+	\'95	pinHash (nullable), pinEnabled (bool)\
+	\'95	isActive\
+	\'95	createdAt\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b \cf2 Location
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	id, businessId, name, address?, timezone, isActive\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b \cf2 DeviceSession
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	id, businessId\
+	\'95	userId (nullable for kiosk)\
+	\'95	sessionType: 
+\f4 ADMIN | KIOSK
+\f1 \
+	\'95	deviceName\
+	\'95	defaultLocationId?\
+	\'95	createdAt, lastSeenAt\
+	\'95	revokedAt? (for disabling kiosks)\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b \cf2 TimeEntry
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	id, businessId, userId, locationId\
+	\'95	clockInAt\
+	\'95	clockOutAt (nullable)\
+	\'95	notes?\
+	\'95	createdAt\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f2\b \cf2 PayRate
+\f1\b0 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	id, businessId, userId\
+	\'95	hourlyRate (decimal stored as integer cents to avoid float issues)\
+	\'95	effectiveFrom (timestamp)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 AUTH & SECURITY RULES
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Admins (Owner/Manager) authenticate via 
+\f2\b Firebase Auth
+\f1\b0 .\
+	\'95	Workers clock via 
+\f2\b PIN only
+\f1\b0 ; PIN does 
+\f2\b not
+\f1\b0  create a Firebase Auth session.\
+	\'95	PIN actions require an authenticated 
+\f2\b ADMIN
+\f1\b0  session OR a 
+\f2\b KIOSK
+\f1\b0  device session.\
+	\'95	PINs are 
+\f2\b hashed
+\f1\b0  (bcrypt) and never stored raw.\
+	\'95	Enforce 
+\f4 businessId
+\f1  scoping for every operation.\
+	\'95	Rate-limit PIN attempts per device session (store attempts + cooldown).\
+	\'95	Generic kiosk errors: \'93Invalid PIN\'94.\
+\
+Implementation note:\
+	\'95	Use Firebase ID token verification in API middleware (Firebase Admin SDK).\
+	\'95	For kiosk sessions, issue a signed session token (HTTP-only cookie) stored/validated server-side and referenced in Firestore deviceSessions.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 KIOSK MODE (CORE FEATURE)
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Admin can enable kiosk mode on a device.\
+	\'95	Kiosk session:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Locked to a business\
+	\'95	Optional default location\
+	\'95	Full-screen, PIN-only UI\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Kiosk sessions stored in Firestore 
+\f4 deviceSessions
+\f1 .\
+	\'95	Admin can revoke kiosks at any time.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 FRONTEND SCREENS (TECH eTIME)
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	
+\f2\b Landing
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Tech eTime branding\
+	\'95	\'93Create Business\'94 / \'93Admin Sign In\'94\
+\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	2.	
+\f2\b Create Business
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Business name, owner email, password\
+	\'95	Postmark email confirmation (basic)\
+\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	3.	
+\f2\b Admin Dashboard
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Locations CRUD\
+	\'95	Workers CRUD:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Set hourly rate\
+	\'95	Generate or manually set PIN (PIN shown once)\
+	\'95	Enable/disable worker\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Kiosk management:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	\'93Enable Kiosk on This Device\'94\
+	\'95	List kiosks, revoke\
+\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	4.	
+\f2\b Time Clock
+\f1\b0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li420\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 A) Admin Clock View\
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Select worker, clock in/out manually (fast UI)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\li260\sl324\slmult1\pardirnatural\partightenfactor0
+\cf2 B) Kiosk Clock View\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Numeric PIN pad\
+	\'95	Location selector (if not locked)\
+	\'95	Success screen (auto-reset after 3 seconds)\
+\
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	5.	
+\f2\b Payroll Reports
+\f1\b0 \
+\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Date range picker\
+	\'95	Filters: worker, location\
+	\'95	Output table:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Worker\
+	\'95	Total hours\
+	\'95	Hourly rate (effective for period; prefer pay-rate history)\
+	\'95	Gross pay\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	CSV export\
+\
+UX requirements:\
+	\'95	Mobile-first layouts, large tap targets, minimal typing.\
+	\'95	Use interactive controls: PIN keypad, searchable worker selector, date presets (\'93This week\'94, \'93Last week\'94), location defaulting, inline edit rows.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 API ENDPOINTS (NODE API)
+\f1\b0\fs28 \cf2 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Auth
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 POST /auth/register-business
+\f1 \
+	\'95	
+\f4 POST /auth/login
+\f1  (optional; primary auth is Firebase\'97use for exchanging Firebase ID token for server session if needed)\
+	\'95	
+\f4 POST /auth/logout
+\f1 \
+	\'95	
+\f4 GET /me
+\f1 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Admin
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 GET/POST /locations
+\f1 \
+	\'95	
+\f4 PATCH /locations/:id
+\f1 \
+	\'95	
+\f4 GET/POST /users
+\f1 \
+	\'95	
+\f4 PATCH /users/:id
+\f1 \
+	\'95	
+\f4 POST /users/:id/pin/set
+\f1 \
+	\'95	
+\f4 POST /users/:id/pin/reset
+\f1 \
+	\'95	
+\f4 POST /kiosk/enable
+\f1 \
+	\'95	
+\f4 POST /kiosk/disable
+\f1 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Time Clock
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 POST /time-entries/clock-in
+\f1  (ADMIN)\
+	\'95	
+\f4 POST /time-entries/clock-out
+\f1  (ADMIN)\
+	\'95	
+\f4 POST /time-entries/pin-toggle
+\f1 \
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Body: 
+\f4 \{ pin, locationId?, notes? \}
+\f1 \
+	\'95	Behavior: toggle open shift for matching worker\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs34 \cf2 Payroll
+\f1\b0\fs28 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 GET /reports/payroll
+\f1 \
+	\'95	
+\f4 GET /reports/payroll.csv
+\f1  (or header-based CSV)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 TIME RULES
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Only one open shift per worker.\
+	\'95	All entries require a location.\
+	\'95	Open shifts excluded from payroll totals and flagged.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 PAYROLL CALCULATION
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Prefer PayRate history (effectiveFrom) when calculating within selected date range.\
+	\'95	Calculate hour overlap within selected pay period.\
+	\'95	Gross pay = hours \'d7 rate (rate in cents; output formatted dollars)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 SEED DATA (LOCAL DEV)
+\f1\b0\fs28 \cf2 \
+\
+Provide a seed script that runs against Firestore Emulator:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Sample business \'93Tech eTime Demo\'94\
+	\'95	2 locations\
+	\'95	5 workers with demo PINs (document in README)\
+	\'95	Sample time entries (mix of closed + one open shift)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 DX REQUIREMENTS
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	One-command startup:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 npm install
+\f1 \
+	\'95	
+\f4 npm run dev
+\f1  (runs web + api + emulator instructions)\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Include scripts:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	
+\f4 dev
+\f1  (web + api concurrently)\
+	\'95	
+\f4 emulators:start
+\f1 \
+	\'95	
+\f4 seed
+\f1 \
+	\'95	
+\f4 test
+\f1 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Clean README:\
+\pard\tqr\tx500\tx660\li660\fi-660\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Setup, env vars, emulator usage, demo credentials, Postmark/Gemini optional configuration\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Minimal tests (Vitest/Jest):\
+\pard\tqr\tx660\tx820\li820\fi-820\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	PIN clock toggle logic (open shift toggling, rate limit)\
+	2.	Payroll calculation across date range with pay rate history\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 IMPLEMENTATION ORDER (STRICT)
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx260\tx420\li420\fi-420\sl324\slmult1\sb240\partightenfactor0
+
+\f5 \cf2 	1.	Firestore data model + emulator config + seed\
+	2.	Auth + business scoping middleware (Firebase Admin token verification)\
+	3.	Workers + PIN hashing + set/reset flows\
+	4.	Kiosk sessions (enable/disable + session cookie)\
+	5.	PIN clock toggle endpoint + rate limiting\
+	6.	React UI with Tech eTime branding + kiosk mode UX\
+	7.	Payroll reporting + CSV export\
+	8.	AI features (Gemini) + tests + polish\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 DEPLOYMENT
+\f1\b0\fs28 \cf2 \
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Web deployable to Vercel\
+	\'95	API deployable to Vercel serverless (preferred) with env vars for Firebase Admin + Postmark + Gemini\
+	\'95	Ensure local dev works entirely with Firebase Emulator Suite and mock keys.\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\f1 \uc0\u11835 
+\f3 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f1\fs28 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\b\fs44 \cf2 OUTPUT EXPECTATIONS
+\f1\b0\fs28 \cf2 \
+\
+Deliver a clean, professional MVP that looks credible as a featured Tech ePhi product:\
+\pard\tqr\tx100\tx260\li260\fi-260\sl324\slmult1\sb240\partightenfactor0
+\cf2 	\'95	Strong mobile UX\
+	\'95	Spacious layout\
+	\'95	Minimal typing via interactive inputs\
+	\'95	Secure PIN flow + kiosk mode\
+	\'95	Accurate payroll report + CSV export\
+	\'95	Optional AI insights (non-blocking)\
+\
+Start with backend + schema before UI.}
