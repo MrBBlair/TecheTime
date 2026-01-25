@@ -1,5 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 
 interface Step3ProfileProps {
   onNext: () => void;
@@ -7,10 +9,24 @@ interface Step3ProfileProps {
 }
 
 export default function Step3Profile({ onNext, onPrevious }: Step3ProfileProps) {
-  const { user } = useAuth();
-  const [username, setUsername] = useState(user?.firstName?.toLowerCase() || '');
-  const [avatar, setAvatar] = useState<string | null>(null);
+  const { user, firebaseUser, refreshBusinesses } = useAuth();
+  const [username, setUsername] = useState(user?.username || user?.firstName?.toLowerCase() || '');
+  const [avatar, setAvatar] = useState<string | null>(user?.avatarUrl || null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load existing data when user changes
+  useEffect(() => {
+    if (user) {
+      if (user.username) {
+        setUsername(user.username);
+      }
+      if (user.avatarUrl) {
+        setAvatar(user.avatarUrl);
+      }
+    }
+  }, [user]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -23,11 +39,48 @@ export default function Step3Profile({ onNext, onPrevious }: Step3ProfileProps) 
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Profile data can be saved here if needed
-    // For now, we'll just proceed to next step
-    onNext();
+    setError(null);
+    
+    if (!firebaseUser || !user) {
+      setError('You must be logged in to save your profile');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (!db) {
+        throw new Error('Firestore is not initialized');
+      }
+
+      const updateData: { username?: string | null; avatarUrl?: string | null } = {};
+      
+      // Only update fields that have changed or are being set
+      if (username.trim() !== (user.username || '')) {
+        updateData.username = username.trim() || null;
+      }
+      
+      if (avatar !== (user.avatarUrl || null)) {
+        updateData.avatarUrl = avatar;
+      }
+
+      // Only update if there are changes
+      if (Object.keys(updateData).length > 0) {
+        await updateDoc(doc(db, 'users', firebaseUser.uid), updateData);
+        // Refresh user data to get the updated profile
+        await refreshBusinesses();
+      }
+
+      // Proceed to next step
+      onNext();
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      setError(err.message || 'Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -37,6 +90,12 @@ export default function Step3Profile({ onNext, onPrevious }: Step3ProfileProps) 
         <p className="text-gray-600">Add a few details to customize your experience</p>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 text-sm">{error}</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Avatar Upload */}
         <div className="flex flex-col items-center space-y-4">
@@ -44,6 +103,8 @@ export default function Step3Profile({ onNext, onPrevious }: Step3ProfileProps) 
             <div className="w-24 h-24 rounded-full bg-royal-purple/10 flex items-center justify-center overflow-hidden">
               {avatar ? (
                 <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <svg className="w-12 h-12 text-royal-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -112,9 +173,10 @@ export default function Step3Profile({ onNext, onPrevious }: Step3ProfileProps) 
           </button>
           <button
             type="submit"
-            className="btn-primary flex-1 text-lg py-4"
+            disabled={saving}
+            className="btn-primary flex-1 text-lg py-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continue
+            {saving ? 'Saving...' : 'Continue'}
           </button>
         </div>
       </form>

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
-import { db } from '../firebase/admin.js';
+import { db, auth } from '../firebase/admin.js';
 import {
   createLocationSchema,
   updateLocationSchema,
@@ -9,10 +9,168 @@ import {
   setPinSchema,
   enableKioskSchema,
   updateTimeEntrySchema,
+  adminCreateBusinessSchema,
 } from '@techetime/shared';
 import { requireAdmin, AuthRequest } from '../middleware/auth.js';
 
 export const adminRouter = Router();
+
+// Businesses - Admin can create businesses for users/clients
+adminRouter.post('/businesses', requireAdmin, async (req: AuthRequest, res, next) => {
+  try {
+    const data = adminCreateBusinessSchema.parse(req.body);
+    const now = new Date();
+    
+    // Create business
+    const businessRef = db.collection('businesses').doc();
+    const businessId = businessRef.id;
+    
+    const batch = db.batch();
+    
+    // Create business document
+    batch.set(businessRef, {
+      name: data.businessName.trim(),
+      timezone: data.timezone,
+      address: data.address?.trim() || null,
+      city: data.city?.trim() || null,
+      state: data.state?.trim() || null,
+      zipCode: data.zipCode?.trim() || null,
+      phone: data.phone?.trim() || null,
+      createdAt: now,
+    });
+    
+    let userId: string | null = null;
+    let userCreated = false;
+    
+    // Determine if we're assigning to existing user or creating new user
+    if (data.userId) {
+      // Assign to existing user by ID
+      const userDoc = await db.collection('users').doc(data.userId).get();
+      if (!userDoc.exists) {
+        return res.status(404).json({ error: 'User not found', message: `User with ID ${data.userId} does not exist` });
+      }
+      userId = data.userId;
+      
+      const userData = userDoc.data()!;
+      const existingBusinessIds = userData.businessIds || (userData.businessId ? [userData.businessId] : []);
+      
+      // Check if user already belongs to this business (shouldn't happen with new business, but check anyway)
+      if (existingBusinessIds.includes(businessId)) {
+        return res.status(400).json({ error: 'User already belongs to this business' });
+      }
+      
+      // Update user's businessIds array
+      const updatedBusinessIds = [...existingBusinessIds, businessId];
+      batch.update(db.collection('users').doc(userId), {
+        businessIds: updatedBusinessIds,
+        // Update legacy businessId if user had none
+        businessId: userData.businessId || businessId,
+        // Set as default if user had no default
+        defaultBusinessId: userData.defaultBusinessId || businessId,
+      });
+    } else if (data.userEmail) {
+      // Assign to existing user by email
+      const userSnapshot = await db.collection('users').where('email', '==', data.userEmail.toLowerCase().trim()).get();
+      if (userSnapshot.empty) {
+        return res.status(404).json({ error: 'User not found', message: `User with email ${data.userEmail} does not exist` });
+      }
+      
+      const userDoc = userSnapshot.docs[0];
+      userId = userDoc.id;
+      
+      const userData = userDoc.data();
+      const existingBusinessIds = userData.businessIds || (userData.businessId ? [userData.businessId] : []);
+      
+      // Check if user already belongs to this business
+      if (existingBusinessIds.includes(businessId)) {
+        return res.status(400).json({ error: 'User already belongs to this business' });
+      }
+      
+      // Update user's businessIds array
+      const updatedBusinessIds = [...existingBusinessIds, businessId];
+      batch.update(db.collection('users').doc(userId), {
+        businessIds: updatedBusinessIds,
+        businessId: userData.businessId || businessId,
+        defaultBusinessId: userData.defaultBusinessId || businessId,
+      });
+    } else if (data.createNewUser && data.newUserEmail && data.newUserPassword && data.newUserFirstName && data.newUserLastName) {
+      // Create new Firebase Auth user
+      try {
+        const userRecord = await auth.createUser({
+          email: data.newUserEmail.toLowerCase().trim(),
+          password: data.newUserPassword,
+          displayName: `${data.newUserFirstName.trim()} ${data.newUserLastName.trim()}`,
+          emailVerified: false,
+        });
+        userId = userRecord.uid;
+        userCreated = true;
+        
+        // Create user document in Firestore
+        batch.set(db.collection('users').doc(userId), {
+          businessId, // Legacy field
+          businessIds: [businessId],
+          defaultBusinessId: businessId,
+          email: data.newUserEmail.toLowerCase().trim(),
+          role: data.newUserRole,
+          firstName: data.newUserFirstName.trim(),
+          lastName: data.newUserLastName.trim(),
+          pinHash: null,
+          pinEnabled: false,
+          isActive: true,
+          createdAt: now,
+        });
+      } catch (authError: any) {
+        if (authError.code === 'auth/email-already-exists') {
+          return res.status(409).json({ 
+            error: 'User already exists', 
+            message: `A user with email ${data.newUserEmail} already exists. Use userEmail parameter to assign business to existing user.` 
+          });
+        }
+        throw authError;
+      }
+    } else {
+      return res.status(400).json({ 
+        error: 'Invalid request', 
+        message: 'Must provide either userId, userEmail, or createNewUser with all required new user fields' 
+      });
+    }
+    
+    // Commit all changes atomically
+    await batch.commit();
+    
+    // Fetch the created business
+    const businessDoc = await businessRef.get();
+    const businessData = businessDoc.data()!;
+    
+    // Fetch user data if we created or updated one
+    let userData = null;
+    if (userId) {
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        userData = { id: userDoc.id, ...userDoc.data() };
+      }
+    }
+    
+    res.status(201).json({
+      business: { ...businessData, id: businessId },
+      user: userData,
+      userCreated,
+      message: userCreated 
+        ? 'Business and user created successfully' 
+        : 'Business created and assigned to user successfully',
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      const validationErrors = error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: validationErrors 
+      });
+    }
+    console.error('[Admin] Error creating business:', error);
+    next(error);
+  }
+});
 
 // Locations
 adminRouter.get('/locations', requireAdmin, async (req: AuthRequest, res, next) => {

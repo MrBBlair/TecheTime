@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useAuth } from '../../contexts/AuthContext';
 import Step1Welcome from './Step1Welcome';
@@ -7,9 +8,42 @@ import Step3Profile from './Step3Profile';
 import Step4Tour from './Step4Tour';
 
 export default function OnboardingFlow() {
-  const { currentStep, totalSteps, nextStep, previousStep, skipOnboarding, completeOnboarding } = useOnboarding();
+  const { currentStep, totalSteps, nextStep, previousStep, skipOnboarding, completeOnboarding, goToStep } = useOnboarding();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const hasSkippedToAuth = useRef(false);
+  
+  // Check if we should skip to auth step (from landing page "Sign In" button)
+  useEffect(() => {
+    const skipToAuth = (location.state as any)?.skipToAuth;
+    if (skipToAuth && !hasSkippedToAuth.current) {
+      hasSkippedToAuth.current = true;
+      // Navigate directly to step 2 (auth step)
+      goToStep(2);
+    }
+  }, [location.state, goToStep]);
+
+  // Auto-skip Step 3 (Profile) if user already has username and avatar
+  // Only skip when arriving at step 3, not when user navigates back
+  const hasAutoSkippedProfile = useRef(false);
+  useEffect(() => {
+    if (currentStep === 3 && user && !hasAutoSkippedProfile.current) {
+      // If user has both username and avatar, skip to next step
+      // But allow them to edit if they navigate back
+      if (user.username && user.avatarUrl) {
+        hasAutoSkippedProfile.current = true;
+        // Small delay to prevent flicker
+        setTimeout(() => {
+          nextStep();
+        }, 100);
+      }
+    }
+    // Reset flag if user navigates away from step 3
+    if (currentStep !== 3) {
+      hasAutoSkippedProfile.current = false;
+    }
+  }, [currentStep, user, nextStep]);
 
   const handleComplete = () => {
     completeOnboarding();
@@ -33,8 +67,14 @@ export default function OnboardingFlow() {
 
   const handleSkip = () => {
     skipOnboarding();
-    // Redirect to landing page when skipping
-    navigate('/', { replace: true });
+    // Navigate directly to sign in/sign up step (Step 2) when skipping
+    if (currentStep === 1) {
+      // If on welcome step, go to auth step
+      nextStep();
+    } else {
+      // If on other steps, go to auth step (Step 2)
+      goToStep(2);
+    }
   };
 
   const progress = (currentStep / totalSteps) * 100;

@@ -102,3 +102,34 @@ export const updateTimeEntrySchema = z.object({
   notes: z.string().nullable().optional(),
   locationId: z.string().optional(),
 });
+
+export const adminCreateBusinessSchema = z.object({
+  // Business fields
+  businessName: z.string().min(1, 'Business name is required').max(100, 'Business name is too long'),
+  timezone: z.string().default('America/New_York'),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  phone: z.string().optional(),
+  // User assignment - either assign to existing user or create new user
+  userId: z.string().optional(), // Assign to existing user by ID
+  userEmail: z.string().email().optional(), // Assign to existing user by email
+  // New user creation (if userId and userEmail are not provided)
+  createNewUser: z.boolean().default(false),
+  newUserEmail: z.string().email().optional(),
+  newUserPassword: z.string().min(8).optional(),
+  newUserFirstName: z.string().optional(),
+  newUserLastName: z.string().optional(),
+  newUserRole: z.enum(['OWNER', 'MANAGER', 'WORKER']).default('OWNER'),
+}).refine(
+  (data) => {
+    // Must either assign to existing user OR create new user, but not both
+    const hasExistingUser = !!(data.userId || data.userEmail);
+    const hasNewUser = data.createNewUser && !!(data.newUserEmail && data.newUserPassword && data.newUserFirstName && data.newUserLastName);
+    return hasExistingUser !== hasNewUser; // XOR: exactly one must be true
+  },
+  {
+    message: 'Must either assign to an existing user (userId or userEmail) OR create a new user (createNewUser=true with all new user fields)',
+  }
+);

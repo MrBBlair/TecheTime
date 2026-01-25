@@ -293,8 +293,17 @@ export default function KioskMode() {
         navigate('/dashboard');
         return;
       }
-      setExitError(data.error || 'Invalid credentials. Could not leave Kiosk mode.');
-    } catch {
+      
+      // Provide more helpful error messages
+      if (res.status === 503) {
+        setExitError(data.message || data.error || 'Kiosk exit is currently unavailable. Please contact support.');
+      } else if (res.status === 403 && data.error?.includes('admin email')) {
+        setExitError('This kiosk session was created before admin email tracking was added. Please disable and re-enable kiosk mode.');
+      } else {
+        setExitError(data.error || data.message || 'Invalid credentials. Could not leave Kiosk mode.');
+      }
+    } catch (err: any) {
+      console.error('Kiosk exit error:', err);
       setExitError('Unable to verify credentials. Please try again.');
     } finally {
       setExitLoading(false);
@@ -304,6 +313,9 @@ export default function KioskMode() {
   // Keyboard event listener for PIN entry
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't handle if showing exit modal - let input fields handle keyboard events
+      if (showExitModal) return;
+      
       // Don't handle if showing acknowledgment
       if (showAcknowledgment) return;
 
@@ -344,7 +356,7 @@ export default function KioskMode() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [pin, checkHoursPin, canProceedToPin, showAcknowledgment, showCheckHours, handlePinInput, handleCheckHoursPinInput, handleSubmit, handleClear, handleCheckHoursClear, handleCheckHours, selectedLocation]);
+  }, [pin, checkHoursPin, canProceedToPin, showAcknowledgment, showCheckHours, showExitModal, handlePinInput, handleCheckHoursPinInput, handleSubmit, handleClear, handleCheckHoursClear, handleCheckHours, selectedLocation]);
 
   // Generate random positions for clocks and logos (stable across renders)
   const clockPositions = useRef(
@@ -652,20 +664,51 @@ export default function KioskMode() {
 
         {/* Exit Kiosk modal - admin email + password required */}
         {showExitModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+          <div 
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              // Close modal if clicking backdrop
+              if (e.target === e.currentTarget) {
+                setShowExitModal(false);
+                setExitEmail('');
+                setExitPassword('');
+                setExitError('');
+              }
+            }}
+            onKeyDown={(e) => {
+              // Stop keyboard events from propagating to kiosk handler
+              e.stopPropagation();
+            }}
+          >
+            <div 
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 <h2 className="text-2xl font-bold text-royal-purple mb-2">Leave Kiosk Mode</h2>
                 <p className="text-gray-600 text-sm mb-4">
                   Enter your admin email and password to leave Kiosk mode and return to the dashboard.
                 </p>
-                <div className="space-y-4">
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleExitKiosk();
+                  }}
+                  className="space-y-4"
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
                   <div>
                     <label className="block text-sm font-semibold text-charcoal mb-1">Admin email</label>
                     <input
                       type="email"
                       value={exitEmail}
-                      onChange={(e) => { setExitEmail(e.target.value); setExitError(''); }}
+                      onChange={(e) => { 
+                        e.stopPropagation();
+                        setExitEmail(e.target.value); 
+                        setExitError(''); 
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
                       placeholder="you@example.com"
                       className="w-full"
                       autoComplete="email"
@@ -677,7 +720,12 @@ export default function KioskMode() {
                     <input
                       type="password"
                       value={exitPassword}
-                      onChange={(e) => { setExitPassword(e.target.value); setExitError(''); }}
+                      onChange={(e) => { 
+                        e.stopPropagation();
+                        setExitPassword(e.target.value); 
+                        setExitError(''); 
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
                       placeholder="••••••••"
                       className="w-full"
                       autoComplete="current-password"
@@ -688,29 +736,29 @@ export default function KioskMode() {
                       {exitError}
                     </div>
                   )}
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowExitModal(false);
-                      setExitEmail('');
-                      setExitPassword('');
-                      setExitError('');
-                    }}
-                    className="flex-1 btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExitKiosk}
-                    disabled={exitLoading}
-                    className="flex-1 btn-primary disabled:opacity-50"
-                  >
-                    {exitLoading ? 'Verifying…' : 'Leave Kiosk'}
-                  </button>
-                </div>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowExitModal(false);
+                        setExitEmail('');
+                        setExitPassword('');
+                        setExitError('');
+                      }}
+                      className="flex-1 btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={exitLoading}
+                      className="flex-1 btn-primary disabled:opacity-50"
+                    >
+                      {exitLoading ? 'Verifying…' : 'Leave Kiosk'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

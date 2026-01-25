@@ -22,6 +22,31 @@ export default function AdminSettings() {
         </section>
 
         <section className="border-t pt-6">
+          <h2 className="text-2xl font-semibold text-charcoal mb-4">Business Management</h2>
+          <div className="space-y-4 mb-6">
+            <Link
+              to="/admin/create-business"
+              className="flex items-center justify-between p-4 border-2 border-royal-purple rounded-lg hover:bg-purple-50 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-royal-purple/20 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-royal-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-charcoal group-hover:text-royal-purple transition-colors">Create Business for User</h3>
+                  <p className="text-sm text-gray-600">Create a new business and assign it to an existing user or create a new user</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-royal-purple transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </section>
+
+        <section className="border-t pt-6">
           <h2 className="text-2xl font-semibold text-charcoal mb-4">Help & Documentation</h2>
           <div className="space-y-4">
             <Link

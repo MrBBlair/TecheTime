@@ -20,6 +20,7 @@ const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminSettings = lazy(() => import('./pages/AdminSettings'));
+const CreateBusinessForUser = lazy(() => import('./pages/CreateBusinessForUser'));
 const UserGuide = lazy(() => import('./pages/UserGuide'));
 const AdminGuide = lazy(() => import('./pages/AdminGuide'));
 const SuperAdminGuide = lazy(() => import('./pages/SuperAdminGuide'));
@@ -161,6 +162,14 @@ function AppRoutes() {
               element={
                 user && (user.role === 'OWNER' || user.role === 'MANAGER' || user.role === 'SUPERADMIN') 
                   ? <Layout><AdminSettings /></Layout> 
+                  : <Navigate to="/dashboard" replace />
+              }
+            />
+            <Route
+              path="/admin/create-business"
+              element={
+                user && (user.role === 'OWNER' || user.role === 'MANAGER' || user.role === 'SUPERADMIN') 
+                  ? <Layout><CreateBusinessForUser /></Layout> 
                   : <Navigate to="/dashboard" replace />
               }
             />

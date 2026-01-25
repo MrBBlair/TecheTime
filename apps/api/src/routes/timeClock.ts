@@ -156,10 +156,14 @@ timeClockRouter.get('/kiosk/locations', requireDeviceSession, async (req: AuthRe
 timeClockRouter.post('/kiosk/exit', requireDeviceSession, async (req: AuthRequest, res, next) => {
   try {
     const data = kioskExitSchema.parse(req.body);
-    const apiKey = process.env.FIREBASE_WEB_API_KEY;
+    // Check for FIREBASE_WEB_API_KEY first, then fallback to VITE_FIREBASE_API_KEY (for compatibility)
+    const apiKey = process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY;
     if (!apiKey) {
-      console.error('FIREBASE_WEB_API_KEY not set');
-      return res.status(503).json({ error: 'Kiosk exit unavailable' });
+      console.error('FIREBASE_WEB_API_KEY not set. Please set FIREBASE_WEB_API_KEY in your API environment variables.');
+      return res.status(503).json({ 
+        error: 'Kiosk exit unavailable',
+        message: 'FIREBASE_WEB_API_KEY environment variable is not configured. Please set it in your API environment variables (same value as VITE_FIREBASE_API_KEY).'
+      });
     }
     const session = req.deviceSession!;
     const adminEmail = session.adminEmail;

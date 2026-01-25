@@ -10,6 +10,17 @@ export default function Landing() {
   const { resetOnboarding } = useOnboarding();
   const { user } = useAuth();
 
+  const handleSignIn = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    // Reset onboarding to ensure we can access it, then navigate to auth step
+    resetOnboarding();
+    // Navigate to onboarding with state indicating we want to skip to auth step
+    setTimeout(() => {
+      navigate('/onboarding', { state: { skipToAuth: true } });
+    }, 0);
+  };
+
   const handleGetStarted = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
@@ -57,7 +68,7 @@ export default function Landing() {
             A featured application under the Tech ePhi platform. Manage your workforce time clock
             and generate payroll reports with ease.
           </p>
-          <div className="flex justify-center">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               type="button"
               onClick={handleGetStarted}
@@ -65,6 +76,14 @@ export default function Landing() {
               aria-label="Get started with Tech eTime"
             >
               Get Started
+            </button>
+            <button
+              type="button"
+              onClick={handleSignIn}
+              className="text-royal-purple hover:text-purple-700 text-lg font-medium px-8 py-4 relative z-20 cursor-pointer underline underline-offset-4"
+              aria-label="Sign in to Tech eTime"
+            >
+              Sign In
             </button>
           </div>
         </div>

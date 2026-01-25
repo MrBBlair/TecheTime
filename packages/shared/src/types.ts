@@ -22,6 +22,8 @@ export interface User {
   role: UserRole;
   firstName: string;
   lastName: string;
+  username?: string | null; // Optional username for profile
+  avatarUrl?: string | null; // Optional avatar URL (base64 or storage URL)
   workerId?: string | null;
   phoneNumber?: string | null;
   pinHash: string | null;

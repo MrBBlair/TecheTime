@@ -168,6 +168,11 @@ async function main() {
       }
     }
   });
+  
+  // Map VITE_FIREBASE_API_KEY to FIREBASE_WEB_API_KEY if needed
+  if (envVars['VITE_FIREBASE_API_KEY'] && !envVars['FIREBASE_WEB_API_KEY']) {
+    envVars['FIREBASE_WEB_API_KEY'] = envVars['VITE_FIREBASE_API_KEY'];
+  }
 
   log('📋 Setting Frontend Environment Variables...\n', 'blue');
 
@@ -207,6 +212,7 @@ async function main() {
       'PORT',
       'FIREBASE_PROJECT_ID',
       'FIREBASE_SERVICE_ACCOUNT',
+      'FIREBASE_WEB_API_KEY',
       'USE_FIREBASE_EMULATOR',
       'POSTMARK_API_TOKEN',
       'POSTMARK_FROM_EMAIL',
