@@ -24,38 +24,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: white;
   color: var(--charcoal);
-  /* Improve text rendering */
   text-rendering: optimizeLegibility;
   -webkit-text-size-adjust: 100%;
-  /* Prevent iOS Safari pull-to-refresh */
   overscroll-behavior-y: none;
-  /* Fix iOS viewport height issues */
   min-height: 100vh;
   min-height: -webkit-fill-available;
 }
 
 html {
-  /* Fix iOS viewport height */
   height: 100vh;
   height: -webkit-fill-available;
-  /* Prevent pull-to-refresh */
   overscroll-behavior-y: none;
 }
 
 #root {
   min-height: 100vh;
   min-height: -webkit-fill-available;
-  /* Prevent iOS Safari gestures from closing forms */
   touch-action: pan-y;
 }
 
-/* Ensure proper focus visibility for accessibility */
 :focus-visible {
   outline: 2px solid var(--royal-purple);
   outline-offset: 2px;
 }
 
-/* Skip to main content link for screen readers */
 .skip-link {
   position: absolute;
   top: -40px;
@@ -71,7 +63,6 @@ html {
   top: 0;
 }
 
-/* Ensure text is readable on white backgrounds */
 .bg-white {
   color: var(--charcoal);
 }
@@ -91,13 +82,11 @@ html {
   color: var(--charcoal);
 }
 
-/* Mobile-first touch targets */
 button, a, input, select {
   min-height: 44px;
   min-width: 44px;
 }
 
-/* Spacious form inputs */
 input, select, textarea {
   @apply px-4 py-3 text-base rounded-lg border border-light-gray focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-transparent;
   color: var(--charcoal);
@@ -109,25 +98,20 @@ input::placeholder, textarea::placeholder {
   color: #9CA3AF;
 }
 
-/* Ensure inputs are accessible and scroll into view on mobile */
 input:focus, select:focus, textarea:focus {
   scroll-margin: 20px;
   scroll-padding: 20px;
 }
 
-/* Improve touch targets for mobile */
 @media (max-width: 768px) {
   button, a, input, select {
     min-height: 48px;
   }
 }
 
-/* Improve form spacing */
 form {
   @apply space-y-5;
-  /* Prevent iOS Safari from closing form on touch */
   touch-action: manipulation;
-  /* Prevent form submission from causing navigation issues */
   -webkit-user-select: none;
   user-select: none;
 }
@@ -136,23 +120,17 @@ form > div {
   @apply space-y-1;
 }
 
-/* iOS Safari specific fixes for forms */
 @supports (-webkit-touch-callout: none) {
   form {
-    /* Prevent iOS Safari pull-to-refresh on form */
     overscroll-behavior: contain;
   }
-  
   input, textarea, select {
-    /* Prevent iOS Safari zoom on input focus */
     font-size: 16px !important;
-    /* Prevent iOS Safari from auto-closing on input */
     -webkit-user-select: text;
     user-select: text;
   }
 }
 
-/* Professional button styles with smooth transitions */
 .btn-primary {
   @apply bg-royal-purple text-white px-6 py-3 rounded-lg font-semibold;
   transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
@@ -210,7 +188,6 @@ form > div {
   outline-offset: 2px;
 }
 
-/* Smooth transitions for all interactive elements */
 a, button {
   transition: opacity 0.2s ease, transform 0.1s ease;
 }
@@ -221,7 +198,6 @@ a:focus-visible, button:focus-visible {
   border-radius: 4px;
 }
 
-/* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -232,25 +208,17 @@ a:focus-visible, button:focus-visible {
   }
 }
 
-/* High contrast mode support */
 @media (prefers-contrast: high) {
   .btn-primary,
   .btn-secondary,
   .btn-outline {
     border: 2px solid currentColor;
   }
-  
   input, select, textarea {
     border-width: 2px;
   }
 }
 
-/* Ensure WCAG AA contrast ratios */
-/* Royal Purple (#4B2E83) on white: 8.59:1 ✓ */
-/* Old Gold (#C9A227) on Charcoal (#2C2C2C): 4.8:1 ✓ */
-/* Charcoal (#2C2C2C) on white: 12.6:1 ✓ */
-
-/* Focus indicators meet WCAG AA standards */
 *:focus-visible {
   outline-width: 2px;
   outline-style: solid;
@@ -258,7 +226,6 @@ a:focus-visible, button:focus-visible {
   outline-offset: 2px;
 }
 
-/* Improve readability */
 p, span, div {
   line-height: 1.6;
 }
@@ -267,14 +234,12 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.3;
 }
 
-/* Optimize image loading */
 img {
   max-width: 100%;
   height: auto;
   display: block;
 }
 
-/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
@@ -285,7 +250,6 @@ html {
   }
 }
 
-/* Onboarding animations */
 @keyframes fade-in {
   from {
     opacity: 0;

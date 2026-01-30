@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 export default function BusinessSwitcher() {
   const { businesses, selectedBusinessId, setSelectedBusinessId, business } = useAuth();
 
-  // Don't show switcher if user only has one business
   if (!businesses || businesses.length <= 1) {
     return null;
   }
@@ -19,7 +18,6 @@ export default function BusinessSwitcher() {
         onChange={(e) => {
           if (e.target.value) {
             setSelectedBusinessId(e.target.value);
-            // Trigger a custom event that components can listen to for refreshing data
             window.dispatchEvent(new CustomEvent('businessChanged', { detail: { businessId: e.target.value } }));
           }
         }}

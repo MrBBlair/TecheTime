@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../lib/api';
 import FormField from '../FormField';
 import RememberMe from '../RememberMe';
 
@@ -23,7 +24,7 @@ export default function Step2Auth({ onNext, onPrevious }: Step2AuthProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, register, loading: authLoading } = useAuth();
+  const { login, loading: authLoading } = useAuth();
 
   const validateField = (name: string, value: string): string | undefined => {
     switch (name) {
@@ -126,16 +127,13 @@ export default function Step2Auth({ onNext, onPrevious }: Step2AuthProps) {
 
     try {
       if (isSignUp) {
-        // Registration - user data will be loaded automatically by register()
-        await register(
-          formData.email,
-          formData.password,
-          formData.businessName,
-          formData.firstName,
-          formData.lastName
-        );
+        await api.register({
+          email: formData.email,
+          password: formData.password,
+          displayName: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim() || formData.email,
+        });
+        await login(formData.email, formData.password);
       } else {
-        // Login - user data will be loaded automatically by login()
         await login(formData.email, formData.password);
         if (formData.rememberMe) {
           localStorage.setItem('rememberedEmail', formData.email);

@@ -1,149 +1,122 @@
-import { useState, useEffect } from 'react';
+/**
+ * Super Admin Login - UUID-based authentication
+ * Route: /admin
+ */
+
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import FormField from '../components/FormField';
-import RememberMe from '../components/RememberMe';
-import Logo from '../components/Logo';
-import TestCredentials from '../components/TestCredentials';
-import Footer from '../components/Footer';
-import FloatingBackground from '../components/FloatingBackground';
+import { api } from '../lib/api';
+import { FloatingBackground } from '../components/FloatingBackground';
+import { Logo } from '../components/Logo';
+import { Shield, Lock, AlertCircle } from 'lucide-react';
 
-export default function AdminLogin() {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false,
-  });
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+export function AdminLogin() {
   const navigate = useNavigate();
-  const { login } = useAuth();
-
-  // Load saved email if remember me was checked
-  useEffect(() => {
-    const savedEmail = localStorage.getItem('rememberedEmail');
-    if (savedEmail) {
-      setFormData(prev => ({ ...prev, email: savedEmail, rememberMe: true }));
-    }
-  }, []);
-
-  const validateEmail = (email: string): string | undefined => {
-    if (!email) return 'Email is required';
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return 'Please enter a valid email address';
-    return undefined;
-  };
-
-  const validatePassword = (password: string): string | undefined => {
-    if (!password) return 'Password is required';
-    return undefined;
-  };
+  const { impersonateUser } = useAuth();
+  const [uuid, setUuid] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setErrors({});
-
-    const emailError = validateEmail(formData.email);
-    const passwordError = validatePassword(formData.password);
-
-    if (emailError || passwordError) {
-      setErrors({ email: emailError, password: passwordError });
-      return;
-    }
-
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      
-      // Save email if remember me is checked
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberedEmail', formData.email);
-      } else {
-        localStorage.removeItem('rememberedEmail');
+      if (!uuid.trim()) {
+        setError('UUID is required');
+        setLoading(false);
+        return;
       }
+
+      const { customToken } = await api.adminLogin(uuid.trim());
+      await impersonateUser(customToken);
       
-      navigate('/dashboard');
+      // Redirect to super admin dashboard
+      navigate('/super-admin');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
-    } finally {
+      setError(err.message || 'Invalid UUID or authentication failed');
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <div className="flex-1 flex items-center justify-center px-4 py-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-white" aria-hidden>
-          <div className="relative w-full h-full">
-            <FloatingBackground />
-          </div>
-        </div>
-        <TestCredentials />
-        <div className="relative z-10 max-w-md w-full">
-          <div className="bg-white rounded-xl shadow-lg p-8">
+    <div className="relative min-h-screen bg-white overflow-hidden">
+      <FloatingBackground />
+
+      <div className="relative z-10 min-h-screen flex items-center justify-center container-padding">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            {/* Header */}
             <div className="text-center mb-8">
-              <Logo variant="adminLogin" alt="Tech eTime" className="mx-auto mb-6" priority />
-              <h1 className="text-3xl font-bold text-royal-purple mb-2">Admin Sign In</h1>
-              <p className="text-gray-600">Sign in to manage your workforce</p>
+              <Logo variant="kioskBackground" className="w-20 h-20 mx-auto mb-4" />
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Shield className="w-6 h-6 text-brand-purple" />
+                <h1 className="text-3xl font-semibold text-gray-900">Super Admin</h1>
+              </div>
+              <p className="text-gray-600">Enter your UUID to access the admin dashboard</p>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-              <FormField
-                label="Email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={(value) => {
-                  setFormData({ ...formData, email: value });
-                  if (errors.email) {
-                    setErrors({ ...errors, email: validateEmail(value) });
-                  }
-                }}
-                placeholder="admin@example.com"
-                required
-                autoComplete="email"
-                error={errors.email}
-                autoFocus
-              />
-              <FormField
-                label="Password"
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={(value) => {
-                  setFormData({ ...formData, password: value });
-                  if (errors.password) {
-                    setErrors({ ...errors, password: validatePassword(value) });
-                  }
-                }}
-                placeholder="Enter your password"
-                required
-                autoComplete="current-password"
-                error={errors.password}
-              />
-              <RememberMe
-                checked={formData.rememberMe}
-                onChange={(checked) => setFormData({ ...formData, rememberMe: checked })}
-              />
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                  {error}
-                </div>
-              )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="uuid" className="block text-sm font-medium text-gray-700 mb-2">
+                  <Lock className="w-4 h-4 inline mr-1" />
+                  Admin UUID
+                </label>
+                <input
+                  id="uuid"
+                  type="text"
+                  value={uuid}
+                  onChange={(e) => setUuid(e.target.value)}
+                  placeholder="Enter your UUID"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple focus:border-transparent font-mono text-sm"
+                  autoFocus
+                  required
+                  disabled={loading}
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  This is a secure admin-only login. Only authorized UUIDs are accepted.
+                </p>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
-                className="btn-primary w-full text-lg py-4"
+                disabled={loading || !uuid.trim()}
+                className="touch-target w-full px-6 py-3 bg-brand-purple text-white rounded-lg font-medium shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Authenticating...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-5 h-5" />
+                    Login
+                  </>
+                )}
               </button>
             </form>
+
+            {/* Security Notice */}
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800">
+                <strong>Security Notice:</strong> This is a restricted access area. Unauthorized access attempts are logged and monitored.
+              </p>
+            </div>
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

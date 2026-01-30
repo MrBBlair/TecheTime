@@ -21,29 +21,19 @@ const ONBOARDING_SKIPPED_KEY = 'techetime_onboarding_skipped';
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
-  const [isCompleted, setIsCompleted] = useState(() => {
-    return localStorage.getItem(ONBOARDING_STORAGE_KEY) === 'true';
-  });
-  const [isSkipped, setIsSkipped] = useState(() => {
-    return localStorage.getItem(ONBOARDING_SKIPPED_KEY) === 'true';
-  });
+  const [isCompleted, setIsCompleted] = useState(() => localStorage.getItem(ONBOARDING_STORAGE_KEY) === 'true');
+  const [isSkipped, setIsSkipped] = useState(() => localStorage.getItem(ONBOARDING_SKIPPED_KEY) === 'true');
 
   const goToStep = (step: number) => {
-    if (step >= 1 && step <= totalSteps) {
-      setCurrentStep(step);
-    }
+    if (step >= 1 && step <= totalSteps) setCurrentStep(step);
   };
 
   const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
+    if (currentStep < totalSteps) setCurrentStep((s) => s + 1);
   };
 
   const previousStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+    if (currentStep > 1) setCurrentStep((s) => s - 1);
   };
 
   const skipOnboarding = () => {

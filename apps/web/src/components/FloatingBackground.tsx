@@ -1,11 +1,7 @@
 import { useRef } from 'react';
 import Logo from './Logo';
 
-/**
- * Shared animated background: floating purple/gold clocks and logos on white.
- * Used by Kiosk and Layout (main app pages).
- */
-export default function FloatingBackground() {
+function FloatingBackground() {
   const clockPositions = useRef(
     Array.from({ length: 15 }, () => ({
       left: Math.random() * 100,
@@ -34,7 +30,7 @@ export default function FloatingBackground() {
         >
           {pos.type === 'logo' ? (
             <img
-              src="/logo.png"
+              src="/Logo2.png"
               alt=""
               aria-hidden
               style={{
@@ -104,3 +100,6 @@ export default function FloatingBackground() {
     </>
   );
 }
+
+export default FloatingBackground;
+export { FloatingBackground };

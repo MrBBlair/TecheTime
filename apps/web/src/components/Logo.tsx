@@ -30,7 +30,7 @@ interface LogoProps {
   priority?: boolean;
 }
 
-export default function Logo({
+function Logo({
   variant,
   className = '',
   alt = 'Tech eTime',
@@ -41,7 +41,7 @@ export default function Logo({
 
   return (
     <img
-      src="/logo.png"
+      src="/Logo2.png"
       alt={alt}
       className={combined}
       loading={priority ? 'eager' : 'lazy'}
@@ -50,3 +50,6 @@ export default function Logo({
     />
   );
 }
+
+export default Logo;
+export { Logo };

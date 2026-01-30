@@ -1,202 +1,86 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Component, lazy, Suspense, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { OnboardingProvider } from './contexts/OnboardingContext';
+import { AuthGuard } from './components/guards/AuthGuard';
+import { OnboardingGuard } from './components/guards/OnboardingGuard';
+import { KioskGuard } from './components/guards/KioskGuard';
+import BusinessSetupGuard from './components/BusinessSetup/BusinessSetupGuard';
 import Layout from './components/Layout';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
-import BusinessSetupWizard from './components/BusinessSetup/BusinessSetupWizard';
-import BusinessSetupGuard from './components/BusinessSetup/BusinessSetupGuard';
 
-// Lazy load pages for code splitting
-const Landing = lazy(() => import('./pages/Landing'));
-const CreateBusiness = lazy(() => import('./pages/CreateBusiness'));
-const Login = lazy(() => import('./pages/Login'));
-const AdminLogin = lazy(() => import('./pages/AdminLogin'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const TimeClock = lazy(() => import('./pages/TimeClock'));
-const PayrollReports = lazy(() => import('./pages/PayrollReports'));
-const KioskMode = lazy(() => import('./pages/KioskMode'));
-const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const Settings = lazy(() => import('./pages/Settings'));
-const AdminSettings = lazy(() => import('./pages/AdminSettings'));
-const CreateBusinessForUser = lazy(() => import('./pages/CreateBusinessForUser'));
-const UserGuide = lazy(() => import('./pages/UserGuide'));
-const AdminGuide = lazy(() => import('./pages/AdminGuide'));
-const SuperAdminGuide = lazy(() => import('./pages/SuperAdminGuide'));
+function DeferredRouteContent({ children, fallback }: { children: ReactNode; fallback: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
+  if (!ready) return <>{fallback}</>;
+  return <>{children}</>;
+}
 
-// Loading component
-function LoadingSpinner() {
+class RouteErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError = () => ({ hasError: true });
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.default })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const AdminLogin = lazy(() => import('./pages/AdminLogin').then(m => ({ default: m.AdminLogin })));
+const Register = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
+const Welcome = lazy(() => import('./pages/Welcome').then(m => ({ default: m.Welcome })));
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const UserProfile = lazy(() => import('./pages/UserProfile').then(m => ({ default: m.UserProfile })));
+const AdminGuidePage = lazy(() => import('./pages/AdminGuidePage').then(m => ({ default: m.AdminGuidePage })));
+const SuperAdminPage = lazy(() => import('./pages/SuperAdminPage').then(m => ({ default: m.SuperAdminPage })));
+const PayrollReports = lazy(() => import('./pages/PayrollReports').then(m => ({ default: m.PayrollReports })));
+const BusinessDetail = lazy(() => import('./pages/BusinessDetail').then(m => ({ default: m.BusinessDetail })));
+const Kiosk = lazy(() => import('./pages/Kiosk').then(m => ({ default: m.Kiosk })));
+const RoleBasedDashboard = lazy(() => import('./components/RoleBasedDashboard').then(m => ({ default: m.RoleBasedDashboard })));
+const TimeClock = lazy(() => import('./pages/TimeClock').then(m => ({ default: m.default })));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions').then(m => ({ default: m.default })));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy').then(m => ({ default: m.default })));
+
+function PageLoader() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white" role="status" aria-label="Loading">
+    <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="text-royal-purple text-lg">Loading...</div>
-      <span className="sr-only">Loading page...</span>
     </div>
   );
 }
 
-function OnboardingGuard({ children }: { children: React.ReactNode }) {
-  // Don't intercept - let routes handle navigation
-  // Onboarding will be shown via /onboarding route when user clicks "Get Started"
-  return <>{children}</>;
-}
-
-function BusinessSetupRoute() {
-  const { user, loading, businesses } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="text-royal-purple text-lg">Loading...</div>
-      </div>
-    );
-  }
-
-  // If user has businesses, redirect to dashboard
-  if (user && businesses.length > 0) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // If user is not logged in, redirect to landing
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Show setup wizard
-  return <BusinessSetupWizard />;
-}
-
 function OnboardingRoute() {
   const { user, loading } = useAuth();
+  const completed = typeof window !== 'undefined' && localStorage.getItem('techetime_onboarding_completed') === 'true';
+  const skipped = typeof window !== 'undefined' && localStorage.getItem('techetime_onboarding_skipped') === 'true';
 
-  // Check localStorage directly as source of truth
-  // This ensures we catch resetOnboarding() immediately, even before state updates
-  const localStorageCompleted = localStorage.getItem('techetime_onboarding_completed') === 'true';
-  const localStorageSkipped = localStorage.getItem('techetime_onboarding_skipped') === 'true';
-  
-  // Use localStorage as source of truth (it's updated synchronously by resetOnboarding)
-  // State values are used for reactivity, but localStorage is checked first
-  const actuallyCompleted = localStorageCompleted;
-  const actuallySkipped = localStorageSkipped;
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  // Show onboarding if not completed and not skipped
-  // Allow logged-in users to access onboarding if they haven't completed it
-  if (!actuallyCompleted && !actuallySkipped) {
-    return <OnboardingFlow />;
-  }
-
-  // If onboarding is completed or skipped, redirect based on user status
-  if (user) {
-    // Logged in user with completed/skipped onboarding -> go to dashboard
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  // Not logged in and onboarding completed/skipped -> go to landing
+  if (loading) return <PageLoader />;
+  if (!completed && !skipped) return <OnboardingFlow />;
+  if (user) return <Navigate to="/dashboard" replace />;
   return <Navigate to="/" replace />;
 }
 
-function AppRoutes() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  const requireAuth = (element: React.ReactElement, allowNoBusiness = false) => {
-    // If not logged in, redirect to landing
-    if (!user) {
-      return <Navigate to="/" replace />;
-    }
-    
-    // If logged in but has no businesses
-    const businessIds = user.businessIds || (user.businessId ? [user.businessId] : []);
-    if (businessIds.length === 0) {
-      // Allow Dashboard through - it handles business creation itself
-      if (allowNoBusiness) {
-        return element;
-      }
-      // Other routes redirect to setup wizard
-      return <Navigate to="/setup" replace />;
-    }
-    
-    // User is logged in and has businesses - allow access
-    return element;
-  };
-
+function SetupRoute() {
   return (
-    <Suspense fallback={<LoadingSpinner />}>
+    <AuthGuard>
+      <BusinessSetupGuard>
+        <Navigate to="/dashboard" replace />
+      </BusinessSetupGuard>
+    </AuthGuard>
+  );
+}
+
+function ProtectedLayout({ children }: { children: ReactNode }) {
+  return (
+    <AuthGuard>
       <OnboardingGuard>
         <BusinessSetupGuard>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/onboarding" element={<OnboardingRoute />} />
-            <Route path="/setup" element={<BusinessSetupRoute />} />
-            <Route path="/create-business" element={<CreateBusiness />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<AdminLogin />} />
-            <Route
-              path="/dashboard"
-              element={requireAuth(<Layout><Dashboard /></Layout>, true)}
-            />
-            <Route
-              path="/time-clock"
-              element={requireAuth(<Layout><TimeClock /></Layout>)}
-            />
-            <Route
-              path="/payroll"
-              element={requireAuth(<Layout><PayrollReports /></Layout>)}
-            />
-            <Route path="/kiosk" element={<KioskMode />} />
-            <Route path="/terms" element={<Layout><TermsAndConditions /></Layout>} />
-            <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
-            <Route
-              path="/settings"
-              element={requireAuth(<Layout><Settings /></Layout>)}
-            />
-            <Route
-              path="/admin-settings"
-              element={
-                user && (user.role === 'OWNER' || user.role === 'MANAGER' || user.role === 'SUPERADMIN') 
-                  ? <Layout><AdminSettings /></Layout> 
-                  : <Navigate to="/dashboard" replace />
-              }
-            />
-            <Route
-              path="/admin/create-business"
-              element={
-                user && (user.role === 'OWNER' || user.role === 'MANAGER' || user.role === 'SUPERADMIN') 
-                  ? <Layout><CreateBusinessForUser /></Layout> 
-                  : <Navigate to="/dashboard" replace />
-              }
-            />
-            <Route
-              path="/user-guide"
-              element={requireAuth(<Layout><UserGuide /></Layout>)}
-            />
-            <Route
-              path="/admin-guide"
-              element={
-                user && (user.role === 'OWNER' || user.role === 'MANAGER' || user.role === 'SUPERADMIN') 
-                  ? <Layout><AdminGuide /></Layout> 
-                  : <Navigate to="/dashboard" replace />
-              }
-            />
-            <Route
-              path="/super-admin-guide"
-              element={
-                user && user.role === 'SUPERADMIN'
-                  ? <Layout><SuperAdminGuide /></Layout> 
-                  : <Navigate to="/dashboard" replace />
-              }
-            />
-          </Routes>
+          <Layout>{children}</Layout>
         </BusinessSetupGuard>
       </OnboardingGuard>
-    </Suspense>
+    </AuthGuard>
   );
 }
 
@@ -204,7 +88,45 @@ function App() {
   return (
     <AuthProvider>
       <OnboardingProvider>
-        <AppRoutes />
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <RouteErrorBoundary
+            fallback={
+              <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white">
+                <p className="text-gray-600">Something went wrong. This can happen after a hot reload.</p>
+                <button type="button" onClick={() => window.location.reload()} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-800" aria-label="Refresh page">Refresh page</button>
+              </div>
+            }
+          >
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/welcome" element={<Welcome />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/admin" element={<AdminLogin />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/onboarding" element={<OnboardingRoute />} />
+                <Route path="/terms" element={<Layout><TermsAndConditions /></Layout>} />
+                <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
+
+                <Route path="/setup" element={<SetupRoute />} />
+
+                <Route path="/dashboard" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><RoleBasedDashboard /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+                <Route path="/time-clock" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><TimeClock /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+                <Route path="/payroll" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><PayrollReports /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+                <Route path="/payroll-reports" element={<Navigate to="/payroll" replace />} />
+                <Route path="/settings" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><Settings /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+                <Route path="/profile" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><UserProfile /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+                <Route path="/admin-guide" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><AdminGuidePage /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+                <Route path="/business/:businessId" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><BusinessDetail /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+                <Route path="/super-admin" element={<ProtectedLayout><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><SuperAdminPage /></Suspense></DeferredRouteContent></ProtectedLayout>} />
+
+                <Route path="/kiosk" element={<KioskGuard><DeferredRouteContent fallback={<PageLoader />}><Suspense fallback={<PageLoader />}><Kiosk /></Suspense></DeferredRouteContent></KioskGuard>} />
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </RouteErrorBoundary>
+        </BrowserRouter>
       </OnboardingProvider>
     </AuthProvider>
   );

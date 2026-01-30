@@ -6,7 +6,7 @@ import Step2CreateBusiness from './Step2CreateBusiness';
 import Step3Complete from './Step3Complete';
 
 export default function BusinessSetupWizard() {
-  const { refreshBusinesses } = useAuth();
+  const { refreshUserData } = useAuth();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
@@ -24,8 +24,7 @@ export default function BusinessSetupWizard() {
   };
 
   const handleComplete = async () => {
-    // Refresh user data to ensure businesses are loaded
-    await refreshBusinesses();
+    await refreshUserData();
     // Navigate to dashboard - the guard will allow it since user now has a business
     navigate('/dashboard', { replace: true });
   };

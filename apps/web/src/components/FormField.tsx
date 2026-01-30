@@ -39,7 +39,6 @@ export default function FormField({
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
-      // Delay to ensure smooth scroll
       setTimeout(() => {
         inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         inputRef.current?.focus();
@@ -49,7 +48,6 @@ export default function FormField({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      // Find next input and focus it
       const form = inputRef.current?.closest('form');
       if (form) {
         const inputs = Array.from(form.querySelectorAll('input, select, textarea')) as HTMLElement[];
@@ -87,7 +85,6 @@ export default function FormField({
           pattern={pattern}
           className={`w-full ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
           onFocus={(e) => {
-            // Scroll into view when focused, especially on mobile
             setTimeout(() => {
               e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 300);

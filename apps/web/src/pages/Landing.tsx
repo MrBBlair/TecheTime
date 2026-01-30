@@ -13,9 +13,7 @@ export default function Landing() {
   const handleSignIn = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
-    // Reset onboarding to ensure we can access it, then navigate to auth step
     resetOnboarding();
-    // Navigate to onboarding with state indicating we want to skip to auth step
     setTimeout(() => {
       navigate('/onboarding', { state: { skipToAuth: true } });
     }, 0);
@@ -24,32 +22,18 @@ export default function Landing() {
   const handleGetStarted = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
-    console.log('Get Started button clicked');
-    
-    // If user is already logged in, check onboarding status
     if (user) {
       const onboardingCompleted = localStorage.getItem('techetime_onboarding_completed') === 'true';
       const onboardingSkipped = localStorage.getItem('techetime_onboarding_skipped') === 'true';
-      
-      // If onboarding is completed or skipped, go to dashboard
       if (onboardingCompleted || onboardingSkipped) {
         navigate('/dashboard', { replace: true });
         return;
       }
-      
-      // If user is logged in but onboarding not completed, go to onboarding
-      // Don't reset onboarding - let them continue where they left off
       navigate('/onboarding', { replace: true });
       return;
     }
-    
-    // New user - reset onboarding and start fresh
     resetOnboarding();
-    // Use setTimeout to ensure state updates propagate before navigation
-    setTimeout(() => {
-      console.log('Navigating to /onboarding');
-      navigate('/onboarding');
-    }, 0);
+    setTimeout(() => navigate('/onboarding'), 0);
   };
 
   return (

@@ -1,673 +1,1041 @@
-import { Router } from 'express';
-import bcrypt from 'bcrypt';
-import { db, auth } from '../firebase/admin.js';
+/**
+ * Admin Routes
+ */
+
+import { Router, Response } from 'express';
+import { AuthRequest, requireAuth } from '../middleware/auth';
+import { db } from '../config/firebase';
+import { isValidTimezone } from '../utils/validation';
+import { createStaffSchema } from '@shared/types';
+import { hashSecret } from '../utils/crypto';
 import {
-  createLocationSchema,
-  updateLocationSchema,
-  createUserSchema,
-  updateUserSchema,
-  setPinSchema,
-  enableKioskSchema,
-  updateTimeEntrySchema,
-  adminCreateBusinessSchema,
-} from '@techetime/shared';
-import { requireAdmin, AuthRequest } from '../middleware/auth.js';
+  notifyWorkerWelcome,
+  notifyWorkerPayRateChange,
+  notifyManagerNewStaff,
+  notifyOwnerSetupComplete,
+  notifyOwnerLocationAdded,
+  notifyOwnerKioskProvisioned,
+} from '../services/notifications';
 
-export const adminRouter = Router();
+const router = Router();
 
-// Businesses - Admin can create businesses for users/clients
-adminRouter.post('/businesses', requireAdmin, async (req: AuthRequest, res, next) => {
+/**
+ * POST /api/admin/login
+ * Super Admin login with UUID (public endpoint, no auth required)
+ */
+router.post('/login', async (req, res: Response) => {
   try {
-    const data = adminCreateBusinessSchema.parse(req.body);
-    const now = new Date();
+    const { uuid } = req.body;
+
+    if (!uuid || typeof uuid !== 'string') {
+      return res.status(400).json({ error: 'UUID is required' });
+    }
+
+    const superAdminUid = process.env.SUPERADMIN_UID;
+    if (!superAdminUid) {
+      return res.status(500).json({ error: 'Super admin configuration missing' });
+    }
+
+    // Validate UUID matches SUPERADMIN_UID
+    if (uuid !== superAdminUid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check if super admin user exists in Firestore
+    let userDoc = await db.collection('users').doc(superAdminUid).get();
     
-    // Create business
-    const businessRef = db.collection('businesses').doc();
-    const businessId = businessRef.id;
-    
-    const batch = db.batch();
-    
-    // Create business document
-    batch.set(businessRef, {
-      name: data.businessName.trim(),
-      timezone: data.timezone,
-      address: data.address?.trim() || null,
-      city: data.city?.trim() || null,
-      state: data.state?.trim() || null,
-      zipCode: data.zipCode?.trim() || null,
-      phone: data.phone?.trim() || null,
-      createdAt: now,
-    });
-    
-    let userId: string | null = null;
-    let userCreated = false;
-    
-    // Determine if we're assigning to existing user or creating new user
-    if (data.userId) {
-      // Assign to existing user by ID
-      const userDoc = await db.collection('users').doc(data.userId).get();
-      if (!userDoc.exists) {
-        return res.status(404).json({ error: 'User not found', message: `User with ID ${data.userId} does not exist` });
-      }
-      userId = data.userId;
+    if (!userDoc.exists) {
+      // Create super admin user if it doesn't exist
+      const { auth } = await import('../config/firebase');
       
-      const userData = userDoc.data()!;
-      const existingBusinessIds = userData.businessIds || (userData.businessId ? [userData.businessId] : []);
-      
-      // Check if user already belongs to this business (shouldn't happen with new business, but check anyway)
-      if (existingBusinessIds.includes(businessId)) {
-        return res.status(400).json({ error: 'User already belongs to this business' });
-      }
-      
-      // Update user's businessIds array
-      const updatedBusinessIds = [...existingBusinessIds, businessId];
-      batch.update(db.collection('users').doc(userId), {
-        businessIds: updatedBusinessIds,
-        // Update legacy businessId if user had none
-        businessId: userData.businessId || businessId,
-        // Set as default if user had no default
-        defaultBusinessId: userData.defaultBusinessId || businessId,
-      });
-    } else if (data.userEmail) {
-      // Assign to existing user by email
-      const userSnapshot = await db.collection('users').where('email', '==', data.userEmail.toLowerCase().trim()).get();
-      if (userSnapshot.empty) {
-        return res.status(404).json({ error: 'User not found', message: `User with email ${data.userEmail} does not exist` });
-      }
-      
-      const userDoc = userSnapshot.docs[0];
-      userId = userDoc.id;
-      
-      const userData = userDoc.data();
-      const existingBusinessIds = userData.businessIds || (userData.businessId ? [userData.businessId] : []);
-      
-      // Check if user already belongs to this business
-      if (existingBusinessIds.includes(businessId)) {
-        return res.status(400).json({ error: 'User already belongs to this business' });
-      }
-      
-      // Update user's businessIds array
-      const updatedBusinessIds = [...existingBusinessIds, businessId];
-      batch.update(db.collection('users').doc(userId), {
-        businessIds: updatedBusinessIds,
-        businessId: userData.businessId || businessId,
-        defaultBusinessId: userData.defaultBusinessId || businessId,
-      });
-    } else if (data.createNewUser && data.newUserEmail && data.newUserPassword && data.newUserFirstName && data.newUserLastName) {
-      // Create new Firebase Auth user
+      // Check if Firebase Auth user exists
+      let firebaseUser;
       try {
-        const userRecord = await auth.createUser({
-          email: data.newUserEmail.toLowerCase().trim(),
-          password: data.newUserPassword,
-          displayName: `${data.newUserFirstName.trim()} ${data.newUserLastName.trim()}`,
-          emailVerified: false,
+        firebaseUser = await auth.getUser(superAdminUid);
+      } catch {
+        // Create Firebase Auth user if it doesn't exist
+        firebaseUser = await auth.createUser({
+          uid: superAdminUid,
+          email: `admin@tech-etime.com`, // Default email
+          displayName: 'Super Admin',
+          disabled: false,
         });
-        userId = userRecord.uid;
-        userCreated = true;
-        
-        // Create user document in Firestore
-        batch.set(db.collection('users').doc(userId), {
-          businessId, // Legacy field
-          businessIds: [businessId],
-          defaultBusinessId: businessId,
-          email: data.newUserEmail.toLowerCase().trim(),
-          role: data.newUserRole,
-          firstName: data.newUserFirstName.trim(),
-          lastName: data.newUserLastName.trim(),
-          pinHash: null,
-          pinEnabled: false,
-          isActive: true,
-          createdAt: now,
-        });
-      } catch (authError: any) {
-        if (authError.code === 'auth/email-already-exists') {
-          return res.status(409).json({ 
-            error: 'User already exists', 
-            message: `A user with email ${data.newUserEmail} already exists. Use userEmail parameter to assign business to existing user.` 
-          });
-        }
-        throw authError;
       }
-    } else {
-      return res.status(400).json({ 
-        error: 'Invalid request', 
-        message: 'Must provide either userId, userEmail, or createNewUser with all required new user fields' 
+
+      // Create Firestore user document
+      const now = new Date().toISOString();
+      await db.collection('users').doc(superAdminUid).set({
+        email: firebaseUser.email || `admin@tech-etime.com`,
+        displayName: 'Super Admin',
+        role: 'SUPERADMIN',
+        onboardingStatus: 'SETUP_COMPLETED',
+        createdAt: now,
+        updatedAt: now,
       });
+
+      // Set custom claims
+      await auth.setCustomUserClaims(superAdminUid, {
+        role: 'SUPERADMIN',
+      });
+
+      userDoc = await db.collection('users').doc(superAdminUid).get();
     }
-    
-    // Commit all changes atomically
-    await batch.commit();
-    
-    // Fetch the created business
+
+    // Generate custom token for login
+    const { auth } = await import('../config/firebase');
+    const customToken = await auth.createCustomToken(superAdminUid, {
+      role: 'SUPERADMIN',
+    });
+
+    res.json({
+      customToken,
+      user: {
+        id: userDoc.id,
+        ...userDoc.data(),
+      },
+    });
+  } catch (error) {
+    console.error('Super admin login error:', error);
+    res.status(500).json({ error: 'Failed to authenticate' });
+  }
+});
+
+// All other admin routes require authentication
+router.use(requireAuth);
+
+/**
+ * PUT /api/admin/onboarding-status
+ * Update user's onboarding status
+ */
+router.put('/onboarding-status', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.uid) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { status } = req.body;
+    if (!['NEW', 'TOUR_COMPLETED', 'SETUP_COMPLETED'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    await db.collection('users').doc(req.user.uid).update({
+      onboardingStatus: status,
+      updatedAt: new Date().toISOString(),
+    });
+
+    res.json({ message: 'Onboarding status updated' });
+  } catch (error) {
+    console.error('Update onboarding status error:', error);
+    res.status(500).json({ error: 'Failed to update onboarding status' });
+  }
+});
+
+/**
+ * GET /api/admin/business
+ * Get the authenticated user's business
+ */
+router.get('/business', async (req: AuthRequest, res: Response) => {
+  try {
+    // CLIENT_ADMIN should use /api/client-admin/businesses instead
+    if (req.user?.role === 'CLIENT_ADMIN') {
+      return res.status(400).json({ error: 'CLIENT_ADMIN should use /api/client-admin/businesses endpoint' });
+    }
+
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
+    }
+
+    const businessDoc = await db.collection('businesses').doc(req.user.businessId).get();
+
+    if (!businessDoc.exists) {
+      return res.status(404).json({ error: 'Business not found' });
+    }
+
+    const data = businessDoc.data();
+    if (data?.ownerId !== req.user.uid && req.user.role !== 'SUPERADMIN' && req.user.role !== 'MANAGER') {
+      return res.status(403).json({ error: 'Not authorized to view this business' });
+    }
+
+    res.json({
+      id: businessDoc.id,
+      ...data,
+    });
+  } catch (error) {
+    console.error('Get business error:', error);
+    res.status(500).json({ error: 'Failed to fetch business' });
+  }
+});
+
+/**
+ * PUT /api/admin/business
+ * Update the authenticated user's business
+ */
+router.put('/business', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
+    }
+
+    const businessRef = db.collection('businesses').doc(req.user.businessId);
     const businessDoc = await businessRef.get();
-    const businessData = businessDoc.data()!;
-    
-    // Fetch user data if we created or updated one
-    let userData = null;
-    if (userId) {
-      const userDoc = await db.collection('users').doc(userId).get();
-      if (userDoc.exists) {
-        userData = { id: userDoc.id, ...userDoc.data() };
-      }
+
+    if (!businessDoc.exists) {
+      return res.status(404).json({ error: 'Business not found' });
     }
-    
-    res.status(201).json({
-      business: { ...businessData, id: businessId },
-      user: userData,
-      userCreated,
-      message: userCreated 
-        ? 'Business and user created successfully' 
-        : 'Business created and assigned to user successfully',
+
+    const data = businessDoc.data();
+    if (data?.ownerId !== req.user.uid && req.user.role !== 'SUPERADMIN') {
+      return res.status(403).json({ error: 'Only the owner can update business settings' });
+    }
+
+    const { name, address, phone } = req.body;
+    const updates: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (typeof name === 'string' && name.trim()) updates.name = name.trim();
+    if (address !== undefined) updates.address = address || null;
+    if (phone !== undefined) updates.phone = phone || null;
+
+    if (Object.keys(updates).length <= 1) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    await businessRef.update(updates);
+    const updated = await businessRef.get();
+
+    res.json({
+      id: updated.id,
+      ...updated.data(),
     });
-  } catch (error: any) {
-    if (error.name === 'ZodError') {
-      const validationErrors = error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
-      return res.status(400).json({ 
-        error: 'Validation failed',
-        details: validationErrors 
-      });
-    }
-    console.error('[Admin] Error creating business:', error);
-    next(error);
+  } catch (error) {
+    console.error('Update business error:', error);
+    res.status(500).json({ error: 'Failed to update business' });
   }
 });
 
-// Locations
-adminRouter.get('/locations', requireAdmin, async (req: AuthRequest, res, next) => {
+/**
+ * POST /api/admin/complete-setup
+ * Complete setup for existing user (creates Business + Location, updates user)
+ */
+router.post('/complete-setup', async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.businessId) {
-      return res.status(400).json({ 
-        error: 'Business ID required',
-        message: 'No business ID found. Please ensure you have access to a business.'
-      });
+    if (!req.user?.uid) {
+      return res.status(403).json({ error: 'User not properly authenticated' });
     }
-    
-    const locations = await db
-      .collection('businesses')
-      .doc(req.businessId)
+
+    const { businessName, locationName, locationTimezone, pin } = req.body;
+
+    if (!businessName || !locationName || !locationTimezone || !pin) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (!isValidTimezone(locationTimezone)) {
+      return res.status(400).json({ error: 'Invalid timezone' });
+    }
+
+    if (!/^\d{4,8}$/.test(pin)) {
+      return res.status(400).json({ error: 'PIN must be 4-8 digits' });
+    }
+
+    const result = await db.runTransaction(async (transaction) => {
+      const now = new Date().toISOString();
+
+      // Check if business already exists
+      const userDoc = await transaction.get(db.collection('users').doc(req.user!.uid));
+      const existingBusinessId = userDoc.data()?.businessId;
+
+      let businessId = existingBusinessId;
+      let businessRef;
+
+      if (!businessId) {
+        // Create Business document
+        businessRef = db.collection('businesses').doc();
+        businessId = businessRef.id;
+        transaction.set(businessRef, {
+          name: businessName,
+          ownerId: req.user!.uid,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      // Create Location document
+      const locationRef = db.collection('locations').doc();
+      const locationData = {
+        businessId,
+        name: locationName,
+        timezone: locationTimezone,
+        createdAt: now,
+        updatedAt: now,
+      };
+      transaction.set(locationRef, locationData);
+
+      // Update User document
+      const userRef = db.collection('users').doc(req.user!.uid);
+      transaction.update(userRef, {
+        businessId,
+        locationId: locationRef.id,
+        pin: hashSecret(pin),
+        onboardingStatus: 'SETUP_COMPLETED',
+        updatedAt: now,
+      });
+
+      return {
+        businessId,
+        locationId: locationRef.id,
+      };
+    });
+
+    // Get business name for notification
+    const businessDocForNotification = await db.collection('businesses').doc(result.businessId).get();
+    const businessNameForNotification = businessDocForNotification.data()?.name || 'Your Business';
+
+    // Send setup complete notification
+    try {
+      await notifyOwnerSetupComplete(req.user!.uid, {
+        businessName: businessNameForNotification,
+      });
+    } catch (notifError) {
+      console.error('Failed to send setup complete notification:', notifError);
+      // Don't fail the request if notification fails
+    }
+
+    res.status(200).json({
+      message: 'Setup completed successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('Complete setup error:', error);
+    res.status(500).json({ error: 'Failed to complete setup' });
+  }
+});
+
+/**
+ * GET /api/admin/locations
+ * Get all locations for the authenticated user's business
+ */
+router.get('/locations', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
+    }
+
+    const locationsSnapshot = await db
       .collection('locations')
+      .where('businessId', '==', req.user.businessId)
       .get();
-    res.json(locations.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+    const locations = locationsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.json({ locations });
   } catch (error) {
-    console.error('[Admin] Error fetching locations:', error);
-    next(error);
+    console.error('Get locations error:', error);
+    res.status(500).json({ error: 'Failed to fetch locations' });
   }
 });
 
-adminRouter.post('/locations', requireAdmin, async (req: AuthRequest, res, next) => {
+/**
+ * POST /api/admin/locations
+ * Create a new location
+ */
+router.post('/locations', async (req: AuthRequest, res: Response) => {
   try {
-    const data = createLocationSchema.parse(req.body);
-    const locationRef = db
-      .collection('businesses')
-      .doc(req.businessId!)
-      .collection('locations')
-      .doc();
-    await locationRef.set({
-      ...data,
-      businessId: req.businessId!,
-      isActive: true,
-    });
-    res.status(201).json({ id: locationRef.id, ...data });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Users/Workers
-adminRouter.get('/users', requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    if (!req.businessId) {
-      return res.status(400).json({ 
-        error: 'Business ID required',
-        message: 'No business ID found. Please ensure you have access to a business.'
-      });
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
     }
-    
-    // Support both old (businessId) and new (businessIds) formats
-    const usersSnapshot = await db
-      .collection('users')
-      .where('businessId', '==', req.businessId)
-      .get();
-    
-    // Also check for users with businessIds array containing this business
-    const usersWithArraySnapshot = await db
-      .collection('users')
-      .where('businessIds', 'array-contains', req.businessId)
-      .get();
-    
-    // Combine results, avoiding duplicates
-    const userMap = new Map();
-    usersSnapshot.docs.forEach(doc => {
-      userMap.set(doc.id, { id: doc.id, ...doc.data() });
-    });
-    usersWithArraySnapshot.docs.forEach(doc => {
-      if (!userMap.has(doc.id)) {
-        userMap.set(doc.id, { id: doc.id, ...doc.data() });
-      }
-    });
-    
-    res.json(Array.from(userMap.values()));
-  } catch (error) {
-    console.error('[Admin] Error fetching users:', error);
-    next(error);
-  }
-});
 
-adminRouter.post('/users', requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    const data = createUserSchema.parse(req.body);
-    const userRef = db.collection('users').doc();
-    
-    // Extract last 4 digits of phone number for PIN if phoneNumber is provided
-    let pinHash = null;
-    let pinEnabled = false;
-    let initialPin = null;
-    
-    if (data.phoneNumber && data.role === 'WORKER') {
-      // Extract digits only and get last 4
-      const digitsOnly = data.phoneNumber.replace(/\D/g, '');
-      if (digitsOnly.length >= 4) {
-        const lastFourDigits = digitsOnly.slice(-4);
-        pinHash = await bcrypt.hash(lastFourDigits, 10);
-        pinEnabled = true;
-        initialPin = lastFourDigits;
-      }
+    // Only OWNER can create locations
+    if (req.user.role !== 'OWNER') {
+      return res.status(403).json({ error: 'Only owner can create locations' });
     }
-    
-    await userRef.set({
-      ...data,
-      workerId: data.workerId && data.workerId.trim() ? data.workerId.trim() : null,
-      businessId: req.businessId!,
-      pinHash,
-      pinEnabled,
-      isActive: true,
-      createdAt: new Date(),
-    });
-    if (data.hourlyRate) {
-      await db.collection('businesses').doc(req.businessId!).collection('payRates').add({
-        businessId: req.businessId!,
-        userId: userRef.id,
-        hourlyRate: Math.round(data.hourlyRate * 100), // Convert to cents
-        effectiveFrom: new Date(),
-      });
-    }
-    
-    const responseData: any = { id: userRef.id, ...data };
-    if (initialPin) {
-      responseData.initialPin = initialPin;
-    }
-    
-    res.status(201).json(responseData);
-  } catch (error) {
-    next(error);
-  }
-});
 
-// PIN Management
-adminRouter.post('/users/:id/pin/reset', requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    const newPin = Math.floor(1000 + Math.random() * 9000).toString();
-    const pinHash = await bcrypt.hash(newPin, 10);
-    await db.collection('users').doc(req.params.id).update({
-      pinHash,
-      pinEnabled: true,
-    });
-    res.json({ pin: newPin });
-  } catch (error) {
-    next(error);
-  }
-});
+    const { name, address, timezone } = req.body;
 
-// Kiosk
-adminRouter.post('/kiosk/enable', requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    const data = enableKioskSchema.parse(req.body);
-    const userDoc = await db.collection('users').doc(req.userId!).get();
-    const adminEmail = userDoc.exists ? (userDoc.data()!.email as string) || null : null;
-    const sessionRef = db
-      .collection('businesses')
-      .doc(req.businessId!)
-      .collection('deviceSessions')
-      .doc();
-    const now = new Date();
-    await sessionRef.set({
-      businessId: req.businessId!,
-      userId: req.userId!,
-      adminEmail,
-      sessionType: 'KIOSK',
-      deviceName: data.deviceName,
-      defaultLocationId: data.defaultLocationId || null,
+    if (!name || !timezone) {
+      return res.status(400).json({ error: 'Name and timezone are required' });
+    }
+
+    if (!isValidTimezone(timezone)) {
+      return res.status(400).json({ error: 'Invalid timezone' });
+    }
+
+    const now = new Date().toISOString();
+    const locationRef = db.collection('locations').doc();
+    const locationData = {
+      businessId: req.user.businessId,
+      name,
+      address: address || null,
+      timezone,
       createdAt: now,
-      lastSeenAt: now,
-      revokedAt: null,
+      updatedAt: now,
+    };
+
+    await locationRef.set(locationData);
+
+    // Get business info for notification
+    const businessDoc = await db.collection('businesses').doc(req.user.businessId).get();
+    const businessName = businessDoc.data()?.name || 'Your Business';
+    const ownerId = businessDoc.data()?.ownerId;
+
+    // Notify owner when location is added
+    if (ownerId) {
+      try {
+        await notifyOwnerLocationAdded(ownerId, {
+          locationName: name,
+          timezone,
+          businessName,
+        });
+      } catch (notifError) {
+        console.error('Failed to send location added notification:', notifError);
+      }
+    }
+
+    res.status(201).json({
+      id: locationRef.id,
+      ...locationData,
     });
-    res.status(201).json({ id: sessionRef.id });
   } catch (error) {
-    next(error);
+    console.error('Create location error:', error);
+    res.status(500).json({ error: 'Failed to create location' });
   }
 });
 
-adminRouter.post('/kiosk/disable', requireAdmin, async (req: AuthRequest, res, next) => {
+/**
+ * PUT /api/admin/locations/:id
+ * Update a location
+ */
+router.put('/locations/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const sessionId = req.body.sessionId;
-    if (!sessionId) {
-      return res.status(400).json({ error: 'Session ID required' });
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
     }
 
-    const sessionDoc = await db
-      .collection('businesses')
-      .doc(req.businessId!)
-      .collection('deviceSessions')
-      .doc(sessionId)
-      .get();
-
-    if (!sessionDoc.exists) {
-      return res.status(404).json({ error: 'Session not found' });
+    // Only OWNER can update locations
+    if (req.user.role !== 'OWNER') {
+      return res.status(403).json({ error: 'Only owner can update locations' });
     }
 
-    await sessionDoc.ref.update({ revokedAt: new Date() });
-    res.json({ message: 'Kiosk disabled' });
-  } catch (error) {
-    next(error);
-  }
-});
+    const { id } = req.params;
+    const { name, address, timezone } = req.body;
 
-// Update location
-adminRouter.patch('/locations/:id', requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    const data = updateLocationSchema.parse(req.body);
-    const locationRef = db
-      .collection('businesses')
-      .doc(req.businessId!)
-      .collection('locations')
-      .doc(req.params.id);
-
+    const locationRef = db.collection('locations').doc(id);
     const locationDoc = await locationRef.get();
+
     if (!locationDoc.exists) {
       return res.status(404).json({ error: 'Location not found' });
     }
 
-    await locationRef.update(data);
-    const updated = await locationRef.get();
-    res.json({ id: updated.id, ...updated.data() });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update user
-adminRouter.patch('/users/:id', requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    const data = updateUserSchema.parse(req.body);
-    const userRef = db.collection('users').doc(req.params.id);
-    const userDoc = await userRef.get();
-
-    if (!userDoc.exists || userDoc.data()!.businessId !== req.businessId) {
-      return res.status(404).json({ error: 'User not found' });
+    const locationData = locationDoc.data();
+    if (locationData?.businessId !== req.user.businessId) {
+      return res.status(403).json({ error: 'Not authorized to update this location' });
     }
 
-    const userData = userDoc.data()!;
-    const updateData: any = {};
-    const changes: string[] = [];
-    
-    // Track changes
-    if (data.firstName !== undefined && data.firstName !== userData.firstName) {
-      updateData.firstName = data.firstName;
-      changes.push(`First name: ${userData.firstName} → ${data.firstName}`);
-    }
-    if (data.lastName !== undefined && data.lastName !== userData.lastName) {
-      updateData.lastName = data.lastName;
-      changes.push(`Last name: ${userData.lastName} → ${data.lastName}`);
-    }
-    if (data.workerId !== undefined) {
-      const oldWorkerId = userData.workerId || null;
-      const newWorkerId = data.workerId && data.workerId.trim() ? data.workerId.trim() : null;
-      if (oldWorkerId !== newWorkerId) {
-        updateData.workerId = newWorkerId;
-        changes.push(`ID#: ${oldWorkerId || 'Not set'} → ${newWorkerId || 'Not set'}`);
+    const updates: any = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (name !== undefined) updates.name = name;
+    if (address !== undefined) updates.address = address;
+    if (timezone !== undefined) {
+      if (!isValidTimezone(timezone)) {
+        return res.status(400).json({ error: 'Invalid timezone' });
       }
-    }
-    if (data.role !== undefined && data.role !== userData.role) {
-      updateData.role = data.role;
-      changes.push(`Role: ${userData.role} → ${data.role}`);
-    }
-    if (data.isActive !== undefined && data.isActive !== userData.isActive) {
-      updateData.isActive = data.isActive;
-      changes.push(`Status: ${userData.isActive ? 'Active' : 'Inactive'} → ${data.isActive ? 'Active' : 'Inactive'}`);
-    }
-    
-    let updatedPin: string | null = null;
-    
-    // If phone number is provided, check if it actually changed
-    if (data.phoneNumber !== undefined) {
-      const oldPhoneNumber = userData.phoneNumber || '';
-      const newPhoneNumber = data.phoneNumber || '';
-      
-      // Normalize phone numbers for comparison (remove non-digits)
-      const oldDigits = oldPhoneNumber.replace(/\D/g, '');
-      const newDigits = newPhoneNumber.replace(/\D/g, '');
-      
-      if (oldDigits !== newDigits) {
-        // Phone number changed
-        updateData.phoneNumber = data.phoneNumber;
-        changes.push(`Phone number: ${oldPhoneNumber || 'Not set'} → ${newPhoneNumber}`);
-        
-        // Only update PIN if user is a WORKER and phone number changed
-        if (userData.role === 'WORKER' && newDigits.length >= 4) {
-          const lastFourDigits = newDigits.slice(-4);
-          updateData.pinHash = await bcrypt.hash(lastFourDigits, 10);
-          updateData.pinEnabled = true;
-          updatedPin = lastFourDigits;
-          changes.push(`PIN updated to: ${lastFourDigits}`);
-        }
-      } else if (oldPhoneNumber !== newPhoneNumber) {
-        // Phone number format changed but digits are the same (e.g., formatting)
-        updateData.phoneNumber = data.phoneNumber;
-        changes.push(`Phone number format updated: ${oldPhoneNumber} → ${newPhoneNumber}`);
-      }
-      // If phone number is exactly the same, don't update anything
+      updates.timezone = timezone;
     }
 
-    await userRef.update(updateData);
+    await locationRef.update(updates);
 
-    if (data.hourlyRate !== undefined) {
-      await db.collection('businesses').doc(req.businessId!).collection('payRates').add({
-        businessId: req.businessId!,
-        userId: req.params.id,
-        hourlyRate: Math.round(data.hourlyRate * 100),
-        effectiveFrom: new Date(),
-      });
-    }
-
-    const updated = await userRef.get();
-    const responseData: any = { id: updated.id, ...updated.data() };
-    if (updatedPin) {
-      responseData.updatedPin = updatedPin;
-    }
-    if (changes.length > 0) {
-      responseData.changes = changes;
-    }
-    res.json(responseData);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get time entries for a user (configurable window: default 14 days, support 21+ for activity)
-adminRouter.get('/users/:id/time-entries', requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    const userId = req.params.id;
-    const daysParam = req.query.days;
-    const days = daysParam != null
-      ? Math.min(365, Math.max(1, parseInt(String(daysParam), 10) || 14))
-      : 14;
-
-    // Verify user belongs to business
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (!userDoc.exists || userDoc.data()!.businessId !== req.businessId) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const now = new Date();
-    const endDate = new Date(now);
-    endDate.setHours(23, 59, 59, 999);
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - days);
-    startDate.setHours(0, 0, 0, 0);
-
-    // Fetch all time entries for user (single-field index only), then filter by date client-side
-    let entriesSnapshot;
-    try {
-      entriesSnapshot = await db
-        .collection('businesses')
-        .doc(req.businessId!)
-        .collection('timeEntries')
-        .where('userId', '==', userId)
-        .get();
-    } catch (error: any) {
-      console.error('Failed to fetch time entries:', error);
-      return res.status(500).json({
-        error: 'Failed to fetch time entries',
-        message: error.message,
-      });
-    }
-
-    function toDate(val: unknown): Date | null {
-      if (!val) return null;
-      if (typeof (val as any).toDate === 'function') return (val as any).toDate();
-      if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
-      const d = new Date(val as string | number);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    const filteredDocs = entriesSnapshot.docs
-      .filter((doc) => {
-        const clockIn = toDate(doc.data().clockInAt);
-        if (!clockIn) return false;
-        return clockIn >= startDate && clockIn <= endDate;
-      })
-      .sort((a, b) => {
-        const aTime = toDate(a.data().clockInAt)?.getTime() ?? 0;
-        const bTime = toDate(b.data().clockInAt)?.getTime() ?? 0;
-        return bTime - aTime;
-      })
-      .slice(0, 150);
-
-    const locationIds = new Set<string>();
-    filteredDocs.forEach((doc) => {
-      const lid = doc.data().locationId;
-      if (lid) locationIds.add(lid);
+    const updatedDoc = await locationRef.get();
+    res.json({
+      id: updatedDoc.id,
+      ...updatedDoc.data(),
     });
+  } catch (error) {
+    console.error('Update location error:', error);
+    res.status(500).json({ error: 'Failed to update location' });
+  }
+});
 
-    const locationsMap = new Map<string, string>();
-    for (const locId of locationIds) {
-      const locDoc = await db
-        .collection('businesses')
-        .doc(req.businessId!)
-        .collection('locations')
-        .doc(locId)
-        .get();
-      if (locDoc.exists) {
-        locationsMap.set(locId, (locDoc.data()!.name as string) || 'Unknown');
-      }
+/**
+ * DELETE /api/admin/locations/:id
+ * Delete a location
+ */
+router.delete('/locations/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
     }
 
-    const entries = filteredDocs.map((doc) => {
+    // Only OWNER can delete locations
+    if (req.user.role !== 'OWNER') {
+      return res.status(403).json({ error: 'Only owner can delete locations' });
+    }
+
+    const { id } = req.params;
+    const locationRef = db.collection('locations').doc(id);
+    const locationDoc = await locationRef.get();
+
+    if (!locationDoc.exists) {
+      return res.status(404).json({ error: 'Location not found' });
+    }
+
+    const locationData = locationDoc.data();
+    if (locationData?.businessId !== req.user.businessId) {
+      return res.status(403).json({ error: 'Not authorized to delete this location' });
+    }
+
+    await locationRef.delete();
+
+    res.json({ message: 'Location deleted successfully' });
+  } catch (error) {
+    console.error('Delete location error:', error);
+    res.status(500).json({ error: 'Failed to delete location' });
+  }
+});
+
+/**
+ * GET /api/admin/users
+ * Get all users (staff) for the authenticated user's business
+ */
+router.get('/users', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
+    }
+
+    const usersSnapshot = await db
+      .collection('users')
+      .where('businessId', '==', req.user.businessId)
+      .get();
+
+    const users = usersSnapshot.docs.map((doc) => {
       const data = doc.data();
-      const clockIn = toDate(data.clockInAt);
-      const clockOut = toDate(data.clockOutAt);
-      const created = toDate(data.createdAt);
+      // Don't expose PIN hash
+      const { pin, ...userData } = data;
       return {
         id: doc.id,
-        ...data,
-        clockInAt: clockIn ? clockIn.toISOString() : null,
-        clockOutAt: clockOut ? clockOut.toISOString() : null,
-        createdAt: created ? created.toISOString() : null,
-        locationName: locationsMap.get(data.locationId) || 'Unknown Location',
+        ...userData,
       };
     });
 
-    res.json({
-      entries,
-      period: {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      },
-    });
+    res.json({ users });
   } catch (error) {
-    next(error);
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
-// Update a time entry (admin only)
-adminRouter.patch('/time-entries/:id', requireAdmin, async (req: AuthRequest, res, next) => {
+/**
+ * POST /api/admin/users
+ * Create a new staff member (Worker or Manager)
+ */
+router.post('/users', async (req: AuthRequest, res: Response) => {
   try {
-    const data = updateTimeEntrySchema.parse(req.body);
-    const ref = db
-      .collection('businesses')
-      .doc(req.businessId!)
-      .collection('timeEntries')
-      .doc(req.params.id);
-    const snap = await ref.get();
-    if (!snap.exists) {
-      return res.status(404).json({ error: 'Time entry not found' });
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
     }
-    const update: Record<string, unknown> = {};
-    if (data.clockInAt !== undefined) update.clockInAt = new Date(data.clockInAt);
-    if (data.clockOutAt !== undefined) update.clockOutAt = data.clockOutAt === null ? null : new Date(data.clockOutAt);
-    if (data.notes !== undefined) update.notes = data.notes;
-    if (data.locationId !== undefined) update.locationId = data.locationId;
-    if (Object.keys(update).length === 0) {
-      return res.status(400).json({ error: 'No updates provided' });
+
+    // Only OWNER and MANAGER can create staff
+    if (req.user.role !== 'OWNER' && req.user.role !== 'MANAGER') {
+      return res.status(403).json({ error: 'Not authorized to create staff' });
     }
-    await ref.update(update);
-    const updated = await ref.get();
-    const d = updated.data()!;
-    const locationIds = new Set<string>();
-    if (d.locationId) locationIds.add(d.locationId);
-    const locationsMap = new Map<string, string>();
-    for (const locId of locationIds) {
-      const locSnap = await db
-        .collection('businesses')
-        .doc(req.businessId!)
-        .collection('locations')
-        .doc(locId)
-        .get();
-      if (locSnap.exists) locationsMap.set(locId, locSnap.data()!.name as string);
+
+    // Validate input
+    const validationResult = createStaffSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationResult.error.errors,
+      });
     }
-    const toIso = (v: unknown): string | null => {
-      if (!v) return null;
-      if (typeof (v as any).toDate === 'function') return (v as any).toDate().toISOString();
-      if (v instanceof Date) return v.toISOString();
-      return typeof v === 'string' ? v : null;
+
+    const { displayName, email, pin, role, locationId, payRate } = validationResult.data;
+
+    // Verify location belongs to business
+    const locationDoc = await db.collection('locations').doc(locationId).get();
+    if (!locationDoc.exists) {
+      return res.status(404).json({ error: 'Location not found' });
+    }
+
+    const locationData = locationDoc.data();
+    if (locationData?.businessId !== req.user.businessId) {
+      return res.status(403).json({ error: 'Location does not belong to your business' });
+    }
+
+    // For MANAGER role, email is required
+    if (role === 'MANAGER' && !email) {
+      return res.status(400).json({ error: 'Email is required for Manager role' });
+    }
+
+    const now = new Date().toISOString();
+
+    // Create user document
+    const userRef = db.collection('users').doc();
+    const userData: any = {
+      displayName,
+      onboardingStatus: 'NEW',
+      role,
+      businessId: req.user.businessId,
+      locationId,
+      pin: hashSecret(pin),
+      payRates: [
+        {
+          amount: payRate.amount,
+          effectiveDate: payRate.effectiveDate,
+          createdAt: now,
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
     };
-    res.json({
-      id: updated.id,
-      ...d,
-      clockInAt: toIso(d.clockInAt) ?? d.clockInAt,
-      clockOutAt: d.clockOutAt == null ? null : (toIso(d.clockOutAt) ?? d.clockOutAt),
-      locationName: locationsMap.get(d.locationId) || 'Unknown Location',
+
+    // Add email if provided
+    if (email) {
+      userData.email = email;
+    }
+
+    await userRef.set(userData);
+
+    // If email provided and role is MANAGER, create Firebase Auth user
+    if (email && role === 'MANAGER') {
+      try {
+        const { auth } = await import('../config/firebase');
+        await auth.createUser({
+          email,
+          displayName,
+          disabled: false,
+        });
+
+        // Set custom claims
+        await auth.setCustomUserClaims((await auth.getUserByEmail(email)).uid, {
+          role,
+          businessId: req.user.businessId,
+        });
+      } catch (authError: any) {
+        // If auth user creation fails, delete the Firestore user
+        await userRef.delete();
+        if (authError.code === 'auth/email-already-exists') {
+          return res.status(409).json({ error: 'Email already registered' });
+        }
+        throw authError;
+      }
+    }
+
+    // Don't expose PIN hash in response
+    const { pin: _, ...responseData } = userData;
+
+    // Send welcome notification if user is a WORKER
+    if (role === 'WORKER' && email) {
+      try {
+        await notifyWorkerWelcome(userRef.id, {
+          pin: pin, // Send plain PIN in email (user needs to know it)
+          payRate: payRate.amount,
+        });
+      } catch (notifError) {
+        console.error('Failed to send welcome notification:', notifError);
+        // Don't fail the request if notification fails
+      }
+    }
+
+    // Notify managers when new staff is added
+    if (role === 'WORKER' || role === 'MANAGER') {
+      try {
+        // Get all managers in the business
+        const managersSnapshot = await db
+          .collection('users')
+          .where('businessId', '==', req.user.businessId)
+          .where('role', '==', 'MANAGER')
+          .get();
+
+        const locationDoc = await db.collection('locations').doc(locationId).get();
+        const locationName = locationDoc.data()?.name || 'Unknown Location';
+
+        await Promise.all(
+          managersSnapshot.docs.map((doc) =>
+            notifyManagerNewStaff(doc.id, {
+              staffName: displayName,
+              staffRole: role,
+              locationName,
+            }).catch((err) => console.error(`Failed to notify manager ${doc.id}:`, err))
+          )
+        );
+      } catch (notifError) {
+        console.error('Failed to send manager notification:', notifError);
+      }
+    }
+
+    res.status(201).json({
+      id: userRef.id,
+      ...responseData,
     });
   } catch (error) {
-    next(error);
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
-// Delete a time entry (admin only)
-adminRouter.delete('/time-entries/:id', requireAdmin, async (req: AuthRequest, res, next) => {
+/**
+ * PUT /api/admin/users/:id
+ * Update a staff member
+ */
+router.put('/users/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const ref = db
-      .collection('businesses')
-      .doc(req.businessId!)
-      .collection('timeEntries')
-      .doc(req.params.id);
-    const snap = await ref.get();
-    if (!snap.exists) {
-      return res.status(404).json({ error: 'Time entry not found' });
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
     }
-    await ref.delete();
-    res.json({ ok: true });
+
+    // Only OWNER can update users
+    if (req.user.role !== 'OWNER') {
+      return res.status(403).json({ error: 'Only owner can update users' });
+    }
+
+    const { id } = req.params;
+    const { displayName, email, pin, role, locationId, payRate } = req.body;
+
+    const userRef = db.collection('users').doc(id);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    if (userData?.businessId !== req.user.businessId) {
+      return res.status(403).json({ error: 'Not authorized to update this user' });
+    }
+
+    // Only OWNER can change roles
+    if (role && role !== userData.role && req.user.role !== 'OWNER') {
+      return res.status(403).json({ error: 'Only owner can change user roles' });
+    }
+
+    const updates: any = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (displayName !== undefined) updates.displayName = displayName;
+    if (email !== undefined) updates.email = email;
+    if (pin !== undefined) updates.pin = hashSecret(pin);
+    if (role !== undefined) updates.role = role;
+    if (locationId !== undefined) {
+      // Verify location belongs to business
+      const locationDoc = await db.collection('locations').doc(locationId).get();
+      if (!locationDoc.exists || locationDoc.data()?.businessId !== req.user.businessId) {
+        return res.status(400).json({ error: 'Invalid location' });
+      }
+      updates.locationId = locationId;
+    }
+
+    // Handle pay rate updates
+    if (payRate !== undefined) {
+      const existingPayRates = userData.payRates || [];
+      const previousRate = existingPayRates.length > 0
+        ? existingPayRates[existingPayRates.length - 1].amount
+        : 0;
+      
+      updates.payRates = [
+        ...existingPayRates,
+        {
+          amount: payRate.amount,
+          effectiveDate: payRate.effectiveDate,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      // Notify user of pay rate change if they're a WORKER
+      if (userData.role === 'WORKER' && payRate.amount !== previousRate) {
+        try {
+          await notifyWorkerPayRateChange(id, {
+            previousRate,
+            newRate: payRate.amount,
+            effectiveDate: payRate.effectiveDate,
+          });
+        } catch (notifError) {
+          console.error('Failed to send pay rate change notification:', notifError);
+        }
+      }
+    }
+
+    await userRef.update(updates);
+
+    const updatedDoc = await userRef.get();
+    const updatedData = updatedDoc.data()!;
+    const { pin: _, ...responseData } = updatedData;
+
+    res.json({
+      id: updatedDoc.id,
+      ...responseData,
+    });
   } catch (error) {
-    next(error);
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Failed to update user' });
   }
 });
+
+/**
+ * DELETE /api/admin/users/:id
+ * Delete (deactivate) a staff member
+ */
+router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
+    }
+
+    // Only OWNER can delete users
+    if (req.user.role !== 'OWNER') {
+      return res.status(403).json({ error: 'Only owner can delete users' });
+    }
+
+    const { id } = req.params;
+    const userRef = db.collection('users').doc(id);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    if (userData?.businessId !== req.user.businessId) {
+      return res.status(403).json({ error: 'Not authorized to delete this user' });
+    }
+
+    // Don't allow deleting OWNER
+    if (userData.role === 'OWNER') {
+      return res.status(403).json({ error: 'Cannot delete owner account' });
+    }
+
+    // Soft delete: remove from active users (or mark as deleted)
+    // For now, we'll actually delete the document
+    await userRef.delete();
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+/**
+ * GET /api/admin/payroll-summaries
+ * Get payroll summaries for the authenticated user's business
+ * Query params: startDate, endDate, userId (optional)
+ */
+router.get('/payroll-summaries', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
+    }
+
+    const { startDate, endDate, userId } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate as string) || !dateRegex.test(endDate as string)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    let query = db
+      .collection('dailyPayrollSummaries')
+      .where('businessId', '==', req.user.businessId)
+      .where('date', '>=', startDate)
+      .where('date', '<=', endDate);
+
+    // Optionally filter by userId
+    if (userId) {
+      query = query.where('userId', '==', userId) as any;
+    }
+
+    const snapshot = await query.get();
+
+    const summaries = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Fetch user display names
+    const userIds = [...new Set(summaries.map((s: any) => s.userId))];
+    const userDocs = await Promise.all(
+      userIds.map((uid) => db.collection('users').doc(uid).get())
+    );
+
+    const userMap = new Map();
+    userDocs.forEach((doc) => {
+      if (doc.exists) {
+        userMap.set(doc.id, doc.data()?.displayName || 'Unknown');
+      }
+    });
+
+    // Enrich summaries with user names
+    const enriched = summaries.map((summary: any) => ({
+      ...summary,
+      userName: userMap.get(summary.userId) || 'Unknown',
+    }));
+
+    res.json({ summaries: enriched });
+  } catch (error) {
+    const err = error as Error & { message?: string };
+    console.error('Get payroll summaries error:', err?.message ?? err);
+    if (err?.message?.includes('index')) {
+      console.error(
+        'Create the required Firestore index: run "firebase deploy --only firestore:indexes" or use the URL in the error above.'
+      );
+    }
+    res.status(500).json({ error: 'Failed to fetch payroll summaries' });
+  }
+});
+
+/**
+ * GET /api/admin/time-entries
+ * Get time entries for the authenticated user's business
+ * Query params: startDate, endDate, userId (optional)
+ */
+router.get('/time-entries', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.businessId) {
+      return res.status(403).json({ error: 'User not associated with a business' });
+    }
+
+    const { startDate, endDate, userId } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+
+    // Convert dates to ISO timestamps for query
+    const startTimestamp = new Date(`${startDate}T00:00:00Z`).toISOString();
+    const endTimestamp = new Date(`${endDate}T23:59:59Z`).toISOString();
+
+    let query = db
+      .collection('timeEntries')
+      .where('businessId', '==', req.user.businessId)
+      .where('clockInAt', '>=', startTimestamp)
+      .where('clockInAt', '<=', endTimestamp);
+
+    // Optionally filter by userId
+    if (userId) {
+      query = query.where('userId', '==', userId) as any;
+    }
+
+    const snapshot = await query.get();
+
+    const entries = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Fetch user display names
+    const userIds = [...new Set(entries.map((e: any) => e.userId))];
+    const userDocs = await Promise.all(
+      userIds.map((uid) => db.collection('users').doc(uid).get())
+    );
+
+    const userMap = new Map();
+    userDocs.forEach((doc) => {
+      if (doc.exists) {
+        userMap.set(doc.id, doc.data()?.displayName || 'Unknown');
+      }
+    });
+
+    // Enrich entries with user names
+    const enriched = entries.map((entry: any) => ({
+      ...entry,
+      userName: userMap.get(entry.userId) || 'Unknown',
+    }));
+
+    res.json({ entries: enriched });
+  } catch (error) {
+    const err = error as Error & { message?: string };
+    console.error('Get time entries error:', err?.message ?? err);
+    if (err?.message?.includes('index')) {
+      console.error(
+        'Create the required Firestore index: run "firebase deploy --only firestore:indexes" or use the URL in the error above.'
+      );
+    }
+    res.status(500).json({ error: 'Failed to fetch time entries' });
+  }
+});
+
+/**
+ * GET /api/admin/profile
+ * Get current user's profile
+ */
+router.get('/profile', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.uid) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userDoc = await db.collection('users').doc(req.user.uid).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    // Don't expose PIN hash
+    const { pin, ...profileData } = userData || {};
+
+    res.json({
+      id: userDoc.id,
+      ...profileData,
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+/**
+ * PUT /api/admin/profile
+ * Update current user's own profile (limited fields)
+ */
+router.put('/profile', async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.uid) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { displayName, phoneNumber } = req.body;
+
+    const updates: any = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (displayName !== undefined) {
+      if (typeof displayName !== 'string' || displayName.trim().length === 0) {
+        return res.status(400).json({ error: 'Display name is required' });
+      }
+      updates.displayName = displayName.trim();
+    }
+
+    if (phoneNumber !== undefined) {
+      // Allow clearing phone number (empty string)
+      updates.phoneNumber = phoneNumber?.trim() || null;
+    }
+
+    await db.collection('users').doc(req.user.uid).update(updates);
+
+    // Fetch updated user
+    const userDoc = await db.collection('users').doc(req.user.uid).get();
+    const userData = userDoc.data();
+    const { pin, ...profileData } = userData || {};
+
+    res.json({
+      id: userDoc.id,
+      ...profileData,
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+export default router;

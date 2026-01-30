@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import FormField from '../FormField';
-import { apiUrl } from '../../utils/api';
+import { api } from '../../lib/api';
 
 interface Step2CreateBusinessProps {
   onNext: () => void;
@@ -9,7 +9,7 @@ interface Step2CreateBusinessProps {
 }
 
 export default function Step2CreateBusiness({ onNext, onPrevious }: Step2CreateBusinessProps) {
-  const { firebaseUser, getAuthHeaders, refreshBusinesses } = useAuth();
+  const { user, refreshUserData } = useAuth();
   const [businessName, setBusinessName] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -36,7 +36,7 @@ export default function Step2CreateBusiness({ onNext, onPrevious }: Step2CreateB
       return;
     }
 
-    if (!firebaseUser) {
+    if (!user) {
       setError('You must be logged in to create a business');
       return;
     }
@@ -44,34 +44,15 @@ export default function Step2CreateBusiness({ onNext, onPrevious }: Step2CreateB
     setLoading(true);
 
     try {
-      const headers = await getAuthHeaders(true);
-      
-      const response = await fetch(apiUrl('/api/auth/create-business'), {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          businessName: businessName.trim(),
-          timezone,
-          address: address.trim() || undefined,
-          city: city.trim() || undefined,
-          state: state.trim() || undefined,
-          zipCode: zipCode.trim() || undefined,
-          phone: phone.trim() || undefined,
-        }),
+      await api.completeSetup({
+        businessName: businessName.trim(),
+        locationName: 'Main',
+        locationTimezone: timezone,
+        pin: '0000',
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to create business' }));
-        throw new Error(errorData.error || `Failed to create business: ${response.status}`);
-      }
-
-      // Refresh user data to get the new business
-      // This will update the businesses array in AuthContext
-      await refreshBusinesses();
-      
-      // Wait a moment for state to update and guard to detect the new business
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await refreshUserData();
+      await new Promise((resolve) => setTimeout(resolve, 500));
       onNext();
     } catch (err: any) {
       setError(err.message || 'Failed to create business. Please try again.');
